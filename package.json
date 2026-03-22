@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "esbuild extension/ui/popup-entry.js --bundle --format=esm --minify --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/popup-bundle.js && esbuild extension/ui/sidepanel-entry.js --bundle --format=esm --minify --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/sidepanel-bundle.js",
-    "watch": "esbuild extension/ui/popup-entry.js --bundle --format=esm --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/popup-bundle.js --watch & esbuild extension/ui/sidepanel-entry.js --bundle --format=esm --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/sidepanel-bundle.js --watch"
+    "watch": "esbuild extension/ui/popup-entry.js --bundle --format=esm --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/popup-bundle.js --watch & esbuild extension/ui/sidepanel-entry.js --bundle --format=esm --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/sidepanel-bundle.js --watch",
+    "sync-version": "node -e \"const p=require('./package.json');const m=require('./extension/manifest.json');m.version=p.version;require('fs').writeFileSync('./extension/manifest.json',JSON.stringify(m,null,2)+'\\n')\""
   },
   "dependencies": {
     "@fontsource/manrope": "5.2.8",

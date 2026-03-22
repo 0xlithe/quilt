@@ -64,6 +64,17 @@
     var FAVORITE_QUERY_ID = "lI07N6Otwv1PhnEgXILM7A";
     var UNFAVORITE_QUERY_ID = "ZYKSe-w7KEslx3JhSIk5LA";
 
+    var TIMEOUTS = {
+      NETWORK_DEFAULT_MS: 12000,
+      BRIDGE_REQUEST_MS: 6000,
+      LIKE_REQUEST_MS: 8000,
+      CONFIRM_SHEET_MS: 2500,
+      CONFIRM_SHEET_LONG_MS: 2800,
+      ACTIVE_TOKEN_BUFFER_MS: 1500,
+      PATCH_RETRY_WINDOW_MS: 6000,
+      POLL_INTERVAL_MS: 120,
+    };
+
     function classifyFriendshipRequestKind(rawUrl, baseHref) {
       var u = absUrl(rawUrl, baseHref).toLowerCase();
 
@@ -206,9 +217,20 @@
       return headers;
     }
 
+    var _bridgeNonce = null;
+
+    function setBridgeNonce(nonce) {
+      _bridgeNonce = nonce || null;
+    }
+
+    function getBridgeNonce() {
+      return _bridgeNonce;
+    }
+
     function makeBridgePayload(kind, detail) {
       var payload = {};
       payload[String(kind)] = 1;
+      if (_bridgeNonce) payload._quiltNonce = _bridgeNonce;
       var extra = detail || {};
       var keys = Object.keys(extra);
       for (var i = 0; i < keys.length; i++) {
@@ -334,6 +356,7 @@
       BRIDGE_MESSAGES: BRIDGE_MESSAGES,
       FAVORITE_QUERY_ID: FAVORITE_QUERY_ID,
       UNFAVORITE_QUERY_ID: UNFAVORITE_QUERY_ID,
+      TIMEOUTS: TIMEOUTS,
       buildFollowClickMarker: buildFollowClickMarker,
       buildFriendshipHeadersFromSnapshot: buildFriendshipHeadersFromSnapshot,
       buildFriendshipRequestBody: buildFriendshipRequestBody,
@@ -350,6 +373,8 @@
       classifyUnfollowRequestUrl: classifyUnfollowRequestUrl,
       friendshipCreateResponseOk: friendshipCreateResponseOk,
       makeBridgePayload: makeBridgePayload,
+      setBridgeNonce: setBridgeNonce,
+      getBridgeNonce: getBridgeNonce,
       createFollowWireTracker: createFollowWireTracker,
     };
   }

@@ -3,7 +3,7 @@
 
   var Quilt = (window.Quilt = window.Quilt || {});
 
-  var KEY = "quilt_debug_enabled";
+  var SK = Quilt.STORAGE_KEYS;
 
   Quilt.debugApi = {
     enabled: false,
@@ -17,20 +17,20 @@
 
     setEnabled: function (on) {
       Quilt.debugApi.enabled = !!on;
-      return Quilt.storageApi.set({ [KEY]: Quilt.debugApi.enabled });
+      return Quilt.storageApi.set({ [SK.DEBUG_ENABLED]: Quilt.debugApi.enabled });
     },
 
     loadFromStorage: function () {
-      return Quilt.storageApi.get([KEY]).then(function (r) {
-        Quilt.debugApi.enabled = !!r[KEY];
+      return Quilt.storageApi.get([SK.DEBUG_ENABLED]).then(function (r) {
+        Quilt.debugApi.enabled = !!r[SK.DEBUG_ENABLED];
       });
     },
   };
 
   try {
     chrome.storage.onChanged.addListener(function (changes, area) {
-      if (area !== "local" || !changes[KEY]) return;
-      Quilt.debugApi.enabled = !!changes[KEY].newValue;
+      if (area !== "local" || !changes[SK.DEBUG_ENABLED]) return;
+      Quilt.debugApi.enabled = !!changes[SK.DEBUG_ENABLED].newValue;
     });
   } catch (e) {
     /* ignore */

@@ -3,6 +3,8 @@
 
   var Quilt = self.Quilt;
   var T = Quilt.MESSAGE_TYPES;
+  var SK = Quilt.STORAGE_KEYS;
+  var TD = Quilt.TASK_DEFAULTS;
 
   function $(id) { return document.getElementById(id); }
 
@@ -24,6 +26,12 @@
     progressFill: $("progressFill"),
     idleState: $("idleState"),
   };
+
+  if (el.maxPostAmount) el.maxPostAmount.value = String(TD.maxPostAmount);
+  if (el.delayMin) el.delayMin.value = String(TD.delayMinMs);
+  if (el.delayMax) el.delayMax.value = String(TD.delayMaxMs);
+  if (el.longPauseMin) el.longPauseMin.value = String(TD.longPauseMinMs);
+  if (el.longPauseMax) el.longPauseMax.value = String(TD.longPauseMaxMs);
 
   var VERB_MAP = {
     follow: "Following",
@@ -97,8 +105,14 @@
   function setStatus(text, detail) {
     el.status.style.opacity = "0";
     setTimeout(function () {
-      el.status.innerHTML =
-        "<strong>" + (text || "") + "</strong>" + (detail ? "<br />" + detail : "");
+      el.status.textContent = "";
+      var strong = document.createElement("strong");
+      strong.textContent = text || "";
+      el.status.appendChild(strong);
+      if (detail) {
+        el.status.appendChild(document.createElement("br"));
+        el.status.appendChild(document.createTextNode(detail));
+      }
       el.status.style.opacity = "1";
     }, 100);
   }
@@ -211,8 +225,8 @@
     }
   }
 
-  chrome.storage.local.get(["quilt_last_status"], function (r) {
-    var stored = r.quilt_last_status;
+  chrome.storage.local.get([SK.LAST_STATUS], function (r) {
+    var stored = r[SK.LAST_STATUS];
     if (!stored) {
       showIdle();
       return;
@@ -227,7 +241,7 @@
   });
 
   chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area !== "local" || !changes.quilt_last_status) return;
-    applyStatusData(changes.quilt_last_status.newValue);
+    if (area !== "local" || !changes[SK.LAST_STATUS]) return;
+    applyStatusData(changes[SK.LAST_STATUS].newValue);
   });
 })();

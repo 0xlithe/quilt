@@ -3,6 +3,19 @@
 
   var Quilt = (window.Quilt = window.Quilt || {});
 
+  var SCROLL_DY_MIN = 280;
+  var SCROLL_DY_MAX = 1400;
+  var VISIBILITY_SLACK_ABOVE = -80;
+  var VISIBILITY_SLACK_RIGHT = -80;
+  var VISIBILITY_SLACK_RIGHT_MAX = 120;
+  var VISIBILITY_SLACK_BELOW_HOME = 400;
+  var VISIBILITY_SLACK_BELOW_PROFILE = 2200;
+  var VIEWPORT_IN_RANGE_ABOVE = -120;
+  var VIEWPORT_IN_RANGE_BELOW = 900;
+  var SCROLL_EXCESS_MIN = 80;
+  var VERIFY_POLL_MS = 120;
+  var VERIFY_FOLLOW_CLICK_MS = 2200;
+
   function toArray(nodeList) {
     return Array.prototype.slice.call(nodeList || []);
   }
@@ -96,19 +109,19 @@
    */
   function isExcludedFollowContext(el) {
     if (!el || !el.closest) return true;
-    if (el.closest('[data-testid="sidebarColumn"]')) {
+    var sidebar = el.closest('[data-testid="sidebarColumn"]');
+    if (sidebar) {
       if (isWhoToFollowSidebarModule(el)) return false;
       return true;
     }
     if (isProfileFollowersOrFollowingPath()) return false;
-    var inMainColumn =
+    if (
       el.closest('[data-testid="primaryColumn"]') ||
-      el.closest('main[role="main"]');
-    if (inMainColumn) return false;
-    if (el.closest('[data-testid="HoverCard"]')) return true;
-    if (el.closest('[data-testid="sheet"]')) return true;
-    if (el.closest('[role="dialog"]')) return true;
-    if (el.closest('[data-testid="mask"]')) return true;
+      el.closest('main[role="main"]')
+    ) return false;
+    if (
+      el.closest('[data-testid="HoverCard"],[data-testid="sheet"],[role="dialog"],[data-testid="mask"]')
+    ) return true;
     return false;
   }
 
@@ -195,7 +208,7 @@
     var r;
     for (i = 0; i < arr.length; i++) {
       r = resolveClickTarget(arr[i]).getBoundingClientRect();
-      if (r.bottom > -120 && r.top < h + 900) inRange.push(arr[i]);
+      if (r.bottom > VIEWPORT_IN_RANGE_ABOVE && r.top < h + VIEWPORT_IN_RANGE_BELOW) inRange.push(arr[i]);
       else rest.push(arr[i]);
     }
     return inRange.length ? inRange.concat(rest) : arr;
@@ -213,10 +226,10 @@
     if (parseFloat(st.opacity) === 0) return false;
     var r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) return false;
-    var slackBelow = isProfileFollowersOrFollowingPath() ? 2200 : 400;
-    if (r.bottom < -80 || r.right < -80) return false;
+    var slackBelow = isProfileFollowersOrFollowingPath() ? VISIBILITY_SLACK_BELOW_PROFILE : VISIBILITY_SLACK_BELOW_HOME;
+    if (r.bottom < VISIBILITY_SLACK_ABOVE || r.right < VISIBILITY_SLACK_RIGHT) return false;
     if (r.top > window.innerHeight + slackBelow) return false;
-    if (r.left > window.innerWidth + 120) return false;
+    if (r.left > window.innerWidth + VISIBILITY_SLACK_RIGHT_MAX) return false;
     return true;
   }
 
@@ -398,73 +411,6 @@
     return null;
   }
 
-  function getFollowButtons(processedSet) {
-    var set = processedSet instanceof Set ? processedSet : new Set();
-    var root = getFollowSearchRoot();
-    var nodes = toArray(root.querySelectorAll('[data-testid="follow"]'));
-    if (nodes.length === 0 && root !== document.body) {
-      nodes = toArray(document.querySelectorAll('[data-testid="follow"]'));
-      Quilt.debugApi.log("getFollowButtons: fallback full document");
-    }
-    var out = [];
-    Quilt.debugApi.log("getFollowButtons: raw count", nodes.length);
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      if (isExcludedFollowContext(el)) continue;
-      if (!passesProfileListFollowScope(el)) continue;
-      var clickEl = resolveClickTarget(el);
-      if (!isFollowTargetInteractable(clickEl)) continue;
-      var text = (clickEl.innerText || clickEl.textContent || "").trim().toLowerCase();
-      if (text.length <= 48) {
-        if (text.indexOf("requested") !== -1) continue;
-        if (text.indexOf("following") !== -1) continue;
-      }
-      var id = getFollowTargetId(el);
-      if (id && set.has(id)) continue;
-      out.push(el);
-    }
-    out = sortFollowCandidatesByViewport(out);
-    out = preferInViewFollowOrder(out);
-    Quilt.debugApi.log("getFollowButtons: candidates", out.length);
-    return out;
-  }
-
-  function getUnfollowButtons(processedSet) {
-    var set = processedSet instanceof Set ? processedSet : new Set();
-    if (set.size === 0) {
-      Quilt.debugApi.log("getUnfollowButtons: no followed ids saved");
-      return [];
-    }
-    var root = getFollowSearchRoot();
-    var nodes = toArray(
-      root.querySelectorAll('[data-testid="unfollow"],[data-testid="following"]')
-    );
-    if (nodes.length === 0 && root !== document.body) {
-      nodes = toArray(
-        document.querySelectorAll('[data-testid="unfollow"],[data-testid="following"]')
-      );
-      Quilt.debugApi.log("getUnfollowButtons: fallback full document");
-    }
-    var seenIds = new Set();
-    var out = [];
-    Quilt.debugApi.log("getUnfollowButtons: raw count", nodes.length);
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      if (isExcludedFollowContext(el)) continue;
-      if (!passesProfileListFollowScope(el)) continue;
-      var clickEl = resolveClickTarget(el);
-      if (!isFollowTargetInteractable(clickEl)) continue;
-      var id = getFollowTargetId(el);
-      if (!id || !set.has(id) || seenIds.has(id)) continue;
-      seenIds.add(id);
-      out.push(el);
-    }
-    out = sortFollowCandidatesByViewport(out);
-    out = preferInViewFollowOrder(out);
-    Quilt.debugApi.log("getUnfollowButtons: candidates", out.length);
-    return out;
-  }
-
   function getUserCellTargets(processedSet) {
     var set = processedSet instanceof Set ? processedSet : new Set();
     var root = getFollowSearchRoot();
@@ -586,8 +532,9 @@
   }
 
   function detectRateLimitUi() {
+    var root = document.querySelector('main[role="main"]') || document.body;
     var dialogs = toArray(
-      document.querySelectorAll(
+      root.querySelectorAll(
         '[role="alertdialog"],[role="dialog"],[data-testid="sheet"]'
       )
     );
@@ -705,11 +652,26 @@
   var _pageWorldFollowMsgInstalled = false;
   var _followWireShared = Quilt.followWireShared || null;
   var _bridgeMessages = _followWireShared ? _followWireShared.BRIDGE_MESSAGES || {} : {};
+  var _TM = _followWireShared ? _followWireShared.TIMEOUTS || {} : {};
   var _followWireTracker =
     _followWireShared &&
     typeof _followWireShared.createFollowWireTracker === "function"
       ? _followWireShared.createFollowWireTracker()
       : null;
+
+  (function initBridgeNonce() {
+    if (!_followWireShared || typeof _followWireShared.setBridgeNonce !== "function") return;
+    var existing = document.documentElement.getAttribute("data-quilt-nonce");
+    if (existing) {
+      _followWireShared.setBridgeNonce(existing);
+      return;
+    }
+    var arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    var nonce = Array.from(arr, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+    document.documentElement.setAttribute("data-quilt-nonce", nonce);
+    _followWireShared.setBridgeNonce(nonce);
+  })();
 
   function dispatchFollowWireWait(token, timeoutMs) {
     if (!token || !_followWireShared || !_followWireShared.makeBridgePayload) return false;
@@ -809,7 +771,7 @@
     var result = await requestMainWorldFriendship(
       action,
       { userId: "", screenName: screenName },
-      6000
+      _TM.BRIDGE_REQUEST_MS || 6000
     );
     if (!result) {
       return { ok: false, mode: "request", error: "no_result", status: 0 };
@@ -878,7 +840,7 @@
         "quilt-like-" + Date.now() + "-" + Math.random().toString(16).slice(2);
       var settled = false;
       var limit =
-        typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 6000;
+        typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : (_TM.BRIDGE_REQUEST_MS || 6000);
 
       function finish(result) {
         if (settled) return;
@@ -935,7 +897,7 @@
     }
     var result;
     try {
-      result = await requestMainWorldLike(tweetId, 8000);
+      result = await requestMainWorldLike(tweetId, _TM.LIKE_REQUEST_MS || 8000);
     } catch (e) {
       Quilt.debugApi.log("performDirectLikeRequest: bridge threw", e);
       return { ok: false, mode: "request", error: "bridge_error", status: 0 };
@@ -983,7 +945,7 @@
         "quilt-unlike-" + Date.now() + "-" + Math.random().toString(16).slice(2);
       var settled = false;
       var limit =
-        typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 6000;
+        typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : (_TM.BRIDGE_REQUEST_MS || 6000);
 
       function finish(result) {
         if (settled) return;
@@ -1040,7 +1002,7 @@
     }
     var result;
     try {
-      result = await requestMainWorldUnlike(tweetId, 8000);
+      result = await requestMainWorldUnlike(tweetId, _TM.LIKE_REQUEST_MS || 8000);
     } catch (e) {
       Quilt.debugApi.log("performDirectUnlikeRequest: bridge threw", e);
       return { ok: false, mode: "request", error: "bridge_error", status: 0 };
@@ -1086,7 +1048,7 @@
     return new Promise(function (resolve) {
       var settled = false;
       var limit =
-        typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 2200;
+        typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : VERIFY_FOLLOW_CLICK_MS;
 
       function finish(ok) {
         if (settled) return;
@@ -1131,7 +1093,7 @@
     installPageWorldFollowMessageListener();
     if (!_followWireTracker) return Promise.resolve(false);
 
-    var limit = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 12000;
+    var limit = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : (_TM.NETWORK_DEFAULT_MS || 12000);
     var wait = _followWireTracker.beginWait(action, limit);
     if (!dispatchFollowWireWait(wait.token, limit)) {
       _followWireTracker.cancel(wait.token);
@@ -1255,7 +1217,7 @@
           return true;
         }
       }
-      await Quilt.delayApi.sleep(120);
+      await Quilt.delayApi.sleep(VERIFY_POLL_MS);
     }
     return false;
   }
@@ -1448,7 +1410,7 @@
       var oy = st.overflowY;
       if (oy !== "auto" && oy !== "scroll" && oy !== "overlay") return;
       var excess = node.scrollHeight - node.clientHeight;
-      if (excess > 80 && excess > bestExcess) {
+      if (excess > SCROLL_EXCESS_MIN && excess > bestExcess) {
         bestExcess = excess;
         best = node;
       }
@@ -1462,17 +1424,28 @@
     if (best) return best;
 
     if (col) {
-      var divs = col.querySelectorAll("div");
-      var i;
-      for (i = 0; i < divs.length; i++) {
-        consider(divs[i]);
+      var walker = document.createTreeWalker(col, NodeFilter.SHOW_ELEMENT, {
+        acceptNode: function (node) {
+          if (node.tagName !== "DIV") return NodeFilter.FILTER_SKIP;
+          var st = window.getComputedStyle(node);
+          var oy = st.overflowY;
+          if (oy === "auto" || oy === "scroll" || oy === "overlay") {
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_SKIP;
+        },
+      });
+      var node;
+      while ((node = walker.nextNode())) {
+        consider(node);
+        if (bestExcess > 200) break;
       }
     }
     return best;
   }
 
   function scrollFeed() {
-    var dy = Quilt.delayApi.randomInt(280, 1400);
+    var dy = Quilt.delayApi.randomInt(SCROLL_DY_MIN, SCROLL_DY_MAX);
     if (Math.random() < 0.18) {
       dy += Quilt.delayApi.randomInt(200, 700);
     }
@@ -1644,8 +1617,6 @@
   }
 
   Quilt.domActionsApi = {
-    getFollowButtons: getFollowButtons,
-    getUnfollowButtons: getUnfollowButtons,
     getUserCellTargets: getUserCellTargets,
     getUserCellUnfollowTargets: getUserCellUnfollowTargets,
     getLikeButtons: getLikeButtons,

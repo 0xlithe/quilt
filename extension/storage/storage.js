@@ -33,8 +33,15 @@
       return new Promise(function (resolve, reject) {
         chrome.storage.local.set(items, function () {
           var err = chrome.runtime.lastError;
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            var msg = err.message || "";
+            if (/quota/i.test(msg) || /QUOTA_BYTES/i.test(msg)) {
+              Quilt.debugApi && Quilt.debugApi.log("Storage quota exceeded:", msg);
+            }
+            reject(err);
+          } else {
+            resolve();
+          }
         });
       });
     },

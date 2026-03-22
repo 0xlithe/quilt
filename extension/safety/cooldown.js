@@ -35,20 +35,44 @@
    * @param {function(number): void} [onWaiting] called every ~30s with remaining ms
    */
   CooldownApi.prototype.waitUntilClear = async function (isCancelled, onWaiting) {
+    var r = await Quilt.storageApi.get([KEY_UNTIL]);
+    var u = r[KEY_UNTIL] || 0;
+    if (Date.now() >= u) return;
+
     var lastEmit = 0;
-    while (true) {
-      if (isCancelled && isCancelled()) return;
-      var r = await Quilt.storageApi.get([KEY_UNTIL]);
-      var u = r[KEY_UNTIL] || 0;
-      var now = Date.now();
-      if (now >= u) return;
-      var remaining = u - now;
-      if (typeof onWaiting === "function" && now - lastEmit >= 30000) {
-        lastEmit = now;
-        onWaiting(remaining);
+    var resolved = false;
+    var wakeResolve = null;
+
+    function onChange(changes, area) {
+      if (area !== "local" || !changes[KEY_UNTIL]) return;
+      var nv = changes[KEY_UNTIL].newValue || 0;
+      if (Date.now() >= nv && wakeResolve) {
+        wakeResolve();
       }
-      var slice = Math.min(1000, remaining);
-      await Quilt.delayApi.sleep(slice);
+    }
+    chrome.storage.onChanged.addListener(onChange);
+
+    try {
+      while (!resolved) {
+        if (isCancelled && isCancelled()) return;
+        var r2 = await Quilt.storageApi.get([KEY_UNTIL]);
+        u = r2[KEY_UNTIL] || 0;
+        var now = Date.now();
+        if (now >= u) return;
+        var remaining = u - now;
+        if (typeof onWaiting === "function" && now - lastEmit >= 30000) {
+          lastEmit = now;
+          onWaiting(remaining);
+        }
+        var slice = Math.min(5000, remaining);
+        await new Promise(function (resolve) {
+          wakeResolve = resolve;
+          setTimeout(resolve, slice);
+        });
+        wakeResolve = null;
+      }
+    } finally {
+      chrome.storage.onChanged.removeListener(onChange);
     }
   };
 

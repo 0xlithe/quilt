@@ -30,7 +30,7 @@ importScripts("../messaging/messaging.js");
   ];
 
   var _injectedTabs = new Set();
-  var SIDEBAR_KEY = "quilt_sidebar_on_click";
+  var SK = Quilt.STORAGE_KEYS;
 
   chrome.tabs.onRemoved.addListener(function (tabId) {
     _injectedTabs.delete(tabId);
@@ -46,17 +46,23 @@ importScripts("../messaging/messaging.js");
         chrome.action.setPopup({ popup: "ui/popup.html" });
       }
     } catch (e) {
-      /* sidePanel API unavailable */
+      console.warn("[quilt] sidePanel API error:", e.message || e);
     }
   }
 
-  chrome.storage.local.get([SIDEBAR_KEY], function (r) {
-    applySidebarPref(r[SIDEBAR_KEY] !== false);
+  chrome.storage.local.get([SK.SIDEBAR_ON_CLICK, SK.LAST_STATUS], function (r) {
+    applySidebarPref(r[SK.SIDEBAR_ON_CLICK] !== false);
+    var st = r[SK.LAST_STATUS];
+    if (st && (st.state === "running" || st.state === "paused")) {
+      chrome.storage.local.set({
+        [SK.LAST_STATUS]: { state: "stopped", message: "Extension restarted", time: Date.now() },
+      });
+    }
   });
 
   chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area !== "local" || !changes[SIDEBAR_KEY]) return;
-    applySidebarPref(changes[SIDEBAR_KEY].newValue !== false);
+    if (area !== "local" || !changes[SK.SIDEBAR_ON_CLICK]) return;
+    applySidebarPref(changes[SK.SIDEBAR_ON_CLICK].newValue !== false);
   });
 
   function findXTab(callback) {
@@ -184,9 +190,10 @@ importScripts("../messaging/messaging.js");
       if (typeof p.completed === "number") statusObj.completed = p.completed;
       if (typeof p.maxActions === "number") statusObj.maxActions = p.maxActions;
       chrome.storage.local.set(
-        { quilt_last_status: statusObj },
+        { [SK.LAST_STATUS]: statusObj },
         function () {
-          void chrome.runtime.lastError;
+          var err = chrome.runtime.lastError;
+          if (err) console.warn("[Quilt] storage.set failed:", err.message);
         }
       );
       sendResponse({ ok: true });

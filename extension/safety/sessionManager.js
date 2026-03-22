@@ -3,6 +3,15 @@
 
   var Quilt = (window.Quilt = window.Quilt || {});
 
+  var FATIGUE_BREAK_EVERY = 18;
+  var FATIGUE_BREAK_MIN_MS = 35000;
+  var FATIGUE_BREAK_MAX_MS = 130000;
+  var LONG_SESSION_THRESHOLD_MS = 22 * 60 * 1000;
+  var LONG_SESSION_BREAK_PROBABILITY = 0.35;
+  var LONG_SESSION_BREAK_MIN_MS = 45000;
+  var LONG_SESSION_BREAK_MAX_MS = 150000;
+  var SLEEP_CHUNK_MS = 900;
+
   function SessionRuntime() {
     this.actions = 0;
     this.startTime = Date.now();
@@ -26,16 +35,16 @@
   SessionRuntime.prototype.maybeFatigueBreak = async function (isCancelled) {
     if (isCancelled && isCancelled()) return;
 
-    if (this.actions > 0 && this.actions % 18 === 0) {
+    if (this.actions > 0 && this.actions % FATIGUE_BREAK_EVERY === 0) {
       Quilt.debugApi.log("Session fatigue break (actions)");
-      var ms = Quilt.delayApi.randomInt(35000, 130000);
+      var ms = Quilt.delayApi.randomInt(FATIGUE_BREAK_MIN_MS, FATIGUE_BREAK_MAX_MS);
       await this._sleepChunked(ms, isCancelled);
     }
 
     var elapsed = Date.now() - this.startTime;
-    if (elapsed > 22 * 60 * 1000 && Math.random() < 0.35) {
+    if (elapsed > LONG_SESSION_THRESHOLD_MS && Math.random() < LONG_SESSION_BREAK_PROBABILITY) {
       await this._sleepChunked(
-        Quilt.delayApi.randomInt(45000, 150000),
+        Quilt.delayApi.randomInt(LONG_SESSION_BREAK_MIN_MS, LONG_SESSION_BREAK_MAX_MS),
         isCancelled
       );
     }
@@ -45,7 +54,7 @@
     var end = Date.now() + ms;
     while (Date.now() < end) {
       if (isCancelled && isCancelled()) return;
-      await Quilt.delayApi.sleep(Math.min(900, end - Date.now()));
+      await Quilt.delayApi.sleep(Math.min(SLEEP_CHUNK_MS, end - Date.now()));
     }
   };
 

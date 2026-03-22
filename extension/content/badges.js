@@ -6,15 +6,9 @@
   Quilt._badgesInstalled = true;
 
   var T = Quilt.MESSAGE_TYPES;
+  var SK = Quilt.STORAGE_KEYS;
 
-  var BADGE_DEFAULTS = {
-    maxPostAmount: 50,
-    delayMinMs: 4000,
-    delayMaxMs: 8000,
-    longPauseEvery: 0,
-    longPauseMinMs: 15000,
-    longPauseMaxMs: 45000,
-  };
+  var BADGE_DEFAULTS = Quilt.TASK_DEFAULTS;
 
   var ICON_HEART =
     '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
@@ -24,6 +18,9 @@
 
   var ICON_MINUS_CIRCLE =
     '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
+
+  var ICON_HEART_CRACK =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/><line x1="12" y1="9" x2="10" y2="15"/><line x1="12" y1="9" x2="14" y2="13"/></svg>';
 
   var _activeTask = null;
   var _hideTimer = null;
@@ -99,6 +96,7 @@
 
     var tasks = [
       { task: "like", icon: ICON_HEART, title: "Like" },
+      { task: "unlike", icon: ICON_HEART_CRACK, title: "Unlike" },
       { task: "follow", icon: ICON_PLUS_CIRCLE, title: "Follow All" },
       { task: "unfollow", icon: ICON_MINUS_CIRCLE, title: "Unfollow" },
     ];
@@ -153,6 +151,12 @@
     if (state === "paused") return "Paused";
     if (state === "error") {
       if (msg.indexOf("connect") !== -1) return "Can't connect";
+      if (msg.indexOf("scripts_not_loaded") !== -1) return "Reload the page";
+      if (msg.indexOf("invalid_payload") !== -1) return "Bad settings";
+      if (msg.indexOf("not_x_com") !== -1) return "Open x.com first";
+      if (msg.indexOf("already_running") !== -1) return "Already running";
+      if (msg.indexOf("no_active_tab") !== -1) return "Tab not found";
+      if (msg.indexOf("quota") !== -1) return "Storage full";
       return "Something went wrong";
     }
 
@@ -275,6 +279,9 @@
         sendMessage(T.TASK_STOP, {}).then(function () {
           updateActiveHighlight(null);
           setStatusText("Stopped");
+        }).catch(function () {
+          updateActiveHighlight(null);
+          setStatusText("Can't connect");
         });
         return;
       }
@@ -302,18 +309,21 @@
           setStatusText(errText);
           updateActiveHighlight(null);
         }
+      }).catch(function () {
+        setStatusText("Can't connect");
+        updateActiveHighlight(null);
       });
     });
 
-    chrome.storage.local.get(["quilt_last_status"], function (r) {
-      var stored = r.quilt_last_status;
+    chrome.storage.local.get([SK.LAST_STATUS], function (r) {
+      var stored = r[SK.LAST_STATUS];
       if (!stored) return;
       applyStatus(stored);
     });
 
     chrome.storage.onChanged.addListener(function (changes, area) {
-      if (area !== "local" || !changes.quilt_last_status) return;
-      applyStatus(changes.quilt_last_status.newValue);
+      if (area !== "local" || !changes[SK.LAST_STATUS]) return;
+      applyStatus(changes[SK.LAST_STATUS].newValue);
     });
   }
 

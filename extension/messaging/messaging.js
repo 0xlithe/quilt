@@ -11,6 +11,21 @@
     TASK_RESUME: "TASK_RESUME",
   };
 
+  Quilt.STORAGE_KEYS = {
+    LAST_STATUS: "quilt_last_status",
+    DEBUG_ENABLED: "quilt_debug_enabled",
+    SIDEBAR_ON_CLICK: "quilt_sidebar_on_click",
+  };
+
+  Quilt.TASK_DEFAULTS = {
+    maxPostAmount: 50,
+    delayMinMs: 4000,
+    delayMaxMs: 8000,
+    longPauseEvery: 0,
+    longPauseMinMs: 15000,
+    longPauseMaxMs: 45000,
+  };
+
   /**
    * @returns {"follow"|"unfollow"|"like"|null} null = invalid explicit value
    */
@@ -110,11 +125,11 @@
       longPauseMinMs:
         typeof payload.longPauseMinMs === "number"
           ? payload.longPauseMinMs
-          : 15000,
+          : Quilt.TASK_DEFAULTS.longPauseMinMs,
       longPauseMaxMs:
         typeof payload.longPauseMaxMs === "number"
           ? payload.longPauseMaxMs
-          : 45000,
+          : Quilt.TASK_DEFAULTS.longPauseMaxMs,
     };
   };
 

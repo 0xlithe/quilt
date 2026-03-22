@@ -7,20 +7,23 @@
   Quilt._contentListenerInstalled = true;
 
   var T = Quilt.MESSAGE_TYPES;
+  var SK = Quilt.STORAGE_KEYS;
 
-  if (Quilt.debugApi) Quilt.debugApi.loadFromStorage();
+  if (Quilt.debugApi) {
+    try { Quilt.debugApi.loadFromStorage(); } catch (e) { /* storage unavailable */ }
+  }
 
   if (Quilt.storageApi) {
-    Quilt.storageApi.get(["quilt_last_status"]).then(function (r) {
-      var stored = r.quilt_last_status;
+    Quilt.storageApi.get([SK.LAST_STATUS]).then(function (r) {
+      var stored = r[SK.LAST_STATUS];
       if (!stored) return;
       var s = stored.state || "";
       if (s === "running" || s === "paused") {
         Quilt.storageApi.set({
-          quilt_last_status: { state: "stopped", message: "Page reloaded", time: Date.now() },
-        });
+          [SK.LAST_STATUS]: { state: "stopped", message: "Page reloaded", time: Date.now() },
+        }).catch(function () { /* storage write failed */ });
       }
-    });
+    }).catch(function () { /* storage read failed */ });
   }
 
   function onMessage(msg, _sender, sendResponse) {

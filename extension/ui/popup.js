@@ -3,7 +3,8 @@
 
   var Quilt = self.Quilt;
   var T = Quilt.MESSAGE_TYPES;
-  var DEBUG_KEY = "quilt_debug_enabled";
+  var SK = Quilt.STORAGE_KEYS;
+  var TD = Quilt.TASK_DEFAULTS;
 
   function $(id) { return document.getElementById(id); }
 
@@ -19,6 +20,12 @@
     btnStart: $("btnStart"),
     btnStop: $("btnStop"),
   };
+
+  if (el.maxPostAmount) el.maxPostAmount.value = String(TD.maxPostAmount);
+  if (el.delayMin) el.delayMin.value = String(TD.delayMinMs);
+  if (el.delayMax) el.delayMax.value = String(TD.delayMaxMs);
+  if (el.longPauseMin) el.longPauseMin.value = String(TD.longPauseMinMs);
+  if (el.longPauseMax) el.longPauseMax.value = String(TD.longPauseMaxMs);
 
   function getVal(mdEl) {
     if (!mdEl) return "";
@@ -38,13 +45,19 @@
   function setStatus(text, detail) {
     if (!isDebugOn()) {
       el.status.style.opacity = "0";
-      el.status.innerHTML = "";
+      el.status.textContent = "";
       return;
     }
     el.status.style.opacity = "0";
     setTimeout(function () {
-      el.status.innerHTML =
-        "<strong>" + (text || "") + "</strong>" + (detail ? "<br />" + detail : "");
+      el.status.textContent = "";
+      var strong = document.createElement("strong");
+      strong.textContent = text || "";
+      el.status.appendChild(strong);
+      if (detail) {
+        el.status.appendChild(document.createElement("br"));
+        el.status.appendChild(document.createTextNode(detail));
+      }
       el.status.style.opacity = "1";
     }, 100);
   }
@@ -82,19 +95,19 @@
     });
   }
 
-  chrome.storage.local.get([DEBUG_KEY], function (r) {
-    _debugOn = !!r[DEBUG_KEY];
+  chrome.storage.local.get([SK.DEBUG_ENABLED], function (r) {
+    _debugOn = !!r[SK.DEBUG_ENABLED];
   });
 
   chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area !== "local" || !changes[DEBUG_KEY]) return;
-    _debugOn = !!changes[DEBUG_KEY].newValue;
+    if (area !== "local" || !changes[SK.DEBUG_ENABLED]) return;
+    _debugOn = !!changes[SK.DEBUG_ENABLED].newValue;
     if (!_debugOn) {
       el.status.style.opacity = "0";
-      el.status.innerHTML = "";
+      el.status.textContent = "";
     } else {
-      chrome.storage.local.get(["quilt_last_status"], function (r) {
-        applyStoredStatus(r.quilt_last_status);
+      chrome.storage.local.get([SK.LAST_STATUS], function (r) {
+        applyStoredStatus(r[SK.LAST_STATUS]);
       });
     }
   });
@@ -135,12 +148,12 @@
     setStatus(data.state || "\u2014", msg);
   }
 
-  chrome.storage.local.get([DEBUG_KEY, "quilt_last_status"], function (r) {
-    if (r[DEBUG_KEY]) applyStoredStatus(r.quilt_last_status);
+  chrome.storage.local.get([SK.DEBUG_ENABLED, SK.LAST_STATUS], function (r) {
+    if (r[SK.DEBUG_ENABLED]) applyStoredStatus(r[SK.LAST_STATUS]);
   });
 
   chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area !== "local" || !changes.quilt_last_status) return;
-    if (isDebugOn()) applyStoredStatus(changes.quilt_last_status.newValue);
+    if (area !== "local" || !changes[SK.LAST_STATUS]) return;
+    if (isDebugOn()) applyStoredStatus(changes[SK.LAST_STATUS].newValue);
   });
 })();

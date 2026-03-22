@@ -1,22 +1,22 @@
 (function () {
   "use strict";
 
-  var DEBUG_KEY = "quilt_debug_enabled";
-  var SIDEBAR_KEY = "quilt_sidebar_on_click";
+  var Quilt = self.Quilt;
+  var SK = Quilt.STORAGE_KEYS;
 
   var cbDebug = document.getElementById("debug");
   var cbSidebar = document.getElementById("sidebar");
 
-  chrome.storage.local.get([DEBUG_KEY, SIDEBAR_KEY], function (r) {
-    cbDebug.checked = !!r[DEBUG_KEY];
-    cbSidebar.checked = r[SIDEBAR_KEY] !== false;
+  chrome.storage.local.get([SK.DEBUG_ENABLED, SK.SIDEBAR_ON_CLICK], function (r) {
+    cbDebug.checked = !!r[SK.DEBUG_ENABLED];
+    cbSidebar.checked = r[SK.SIDEBAR_ON_CLICK] !== false;
   });
 
   cbDebug.addEventListener("change", function () {
-    chrome.storage.local.set({ [DEBUG_KEY]: cbDebug.checked });
+    chrome.storage.local.set({ [SK.DEBUG_ENABLED]: cbDebug.checked });
   });
 
   cbSidebar.addEventListener("change", function () {
-    chrome.storage.local.set({ [SIDEBAR_KEY]: cbSidebar.checked });
+    chrome.storage.local.set({ [SK.SIDEBAR_ON_CLICK]: cbSidebar.checked });
   });
 })();

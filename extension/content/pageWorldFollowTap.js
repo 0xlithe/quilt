@@ -15,6 +15,7 @@
   var headerByXhr = new WeakMap();
   var activeToken = null;
   var activeTokenUntil = 0;
+  // X's public web-client bearer token — embedded in every x.com page bundle, not a secret.
   var WEB_BEARER =
     "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
   var observedApiHeaders = {};
@@ -34,8 +35,8 @@
     activeToken = String(token);
     activeTokenUntil =
       Date.now() +
-      (typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 12000) +
-      1500;
+      (typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : (shared.TIMEOUTS.NETWORK_DEFAULT_MS || 12000)) +
+      (shared.TIMEOUTS.ACTIVE_TOKEN_BUFFER_MS || 1500);
   }
 
   function consumeActiveToken() {
@@ -412,7 +413,7 @@
 
   async function confirmFollowUnfollowSheetIfPresent(timeoutMs) {
     var limit =
-      typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 2500;
+      typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : (shared.TIMEOUTS.CONFIRM_SHEET_MS || 2500);
     var start = Date.now();
     while (Date.now() - start < limit) {
       var btn = document.querySelector('[data-testid="confirmationSheetConfirm"]');
@@ -455,6 +456,7 @@
   async function handleFollowClick(detail) {
     var marker = detail && detail.marker ? String(detail.marker) : "";
     if (!marker) return;
+    if (!/^[\w\-.:]+$/.test(marker)) return;
     var target = document.querySelector("[" + CLICK_ATTR + '="' + marker + '"]');
     if (!target || !document.contains(target)) {
       postFollowClickAck(marker, false);
@@ -491,7 +493,7 @@
     } catch (e3) {
       /* ignore */
     }
-    await confirmFollowUnfollowSheetIfPresent(2800);
+    await confirmFollowUnfollowSheetIfPresent(shared.TIMEOUTS.CONFIRM_SHEET_LONG_MS || 2800);
     postFollowClickAck(marker, true);
   }
 
@@ -628,10 +630,19 @@
     window.fetch = quiltPatchFetch;
   }
 
+  var _bridgeNonce = (function () {
+    try {
+      return document.documentElement.getAttribute("data-quilt-nonce") || "";
+    } catch (e) { return ""; }
+  })();
+
   function onWindowMessage(ev) {
     if (ev.source !== window) return;
+    var o = ev.origin;
+    if (o !== "https://x.com" && o !== "https://twitter.com") return;
     var d = ev.data;
     if (!d || typeof d !== "object") return;
+    if (_bridgeNonce && d._quiltNonce !== _bridgeNonce) return;
     if (d[BRIDGE.FOLLOW_WIRE_WAIT] === 1) {
       if (!d.token) return;
       setActiveToken(d.token, d.timeoutMs);
@@ -646,6 +657,8 @@
       if (!d.requestId || !d.action || !d.target) return;
       executeFriendshipRequest(d.action, d.target).then(function (result) {
         postFriendshipRequestAck(d.requestId, result);
+      }).catch(function (e) {
+        postFriendshipRequestAck(d.requestId, { ok: false, error: String(e && e.message ? e.message : e) });
       });
       return;
     }
@@ -653,6 +666,8 @@
       if (!d.requestId || !d.tweetId) return;
       executeLikeRequest(d.tweetId).then(function (result) {
         postLikeRequestAck(d.requestId, result);
+      }).catch(function (e) {
+        postLikeRequestAck(d.requestId, { ok: false, error: String(e && e.message ? e.message : e) });
       });
       return;
     }
@@ -660,6 +675,8 @@
       if (!d.requestId || !d.tweetId) return;
       executeUnlikeRequest(d.tweetId).then(function (result) {
         postUnlikeRequestAck(d.requestId, result);
+      }).catch(function (e) {
+        postUnlikeRequestAck(d.requestId, { ok: false, error: String(e && e.message ? e.message : e) });
       });
     }
   }
@@ -680,7 +697,7 @@
   }
   var t0 = Date.now();
   window.__quiltPatchInterval = setInterval(function () {
-    if (Date.now() - t0 > 6000) {
+    if (Date.now() - t0 > (shared.TIMEOUTS.PATCH_RETRY_WINDOW_MS || 6000)) {
       clearInterval(window.__quiltPatchInterval);
       window.__quiltPatchInterval = null;
       return;

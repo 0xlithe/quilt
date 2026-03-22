@@ -5,6 +5,11 @@
 
   var T = Quilt.MESSAGE_TYPES;
 
+  var FADE_OPACITY_DURATION = "0.35s";
+  var FADE_COLLAPSE_TRANSITION = "max-height 0.4s ease-in-out, margin 0.3s ease-in-out, padding 0.3s ease-in-out";
+  var FADE_COLLAPSE_START_DELAY_MS = 380;
+  var FADE_REMOVE_DELAY_MS = 450;
+
   var _taskMeta = { taskType: null, startedAt: 0, maxActions: 0 };
 
   function emitStatus(state, message, extra) {
@@ -206,15 +211,13 @@
           );
 
           if (emptyStreak >= maxEmptyIterations) {
-            emitStatus(
-              "stopped",
-              "Stopped: no " +
-                spec.actionLabel.toLowerCase() +
-                " targets after " +
-                maxEmptyIterations +
-                " scroll attempts (only verified successes count toward max post amount)",
-              { completed: done }
-            );
+            var stopMsg =
+              done === 0
+                ? "No " + spec.actionLabel.toLowerCase() +
+                  " targets found \u2014 quilt may need an update, or the page layout changed"
+                : "Stopped: no " + spec.actionLabel.toLowerCase() +
+                  " targets after " + maxEmptyIterations + " scroll attempts";
+            emitStatus("stopped", stopMsg, { completed: done });
             break;
           }
 
@@ -396,7 +399,7 @@
               fadeEl.style.setProperty("will-change", "opacity, max-height, margin, padding", "important");
               fadeEl.style.setProperty("transform", "translateZ(0)", "important");
               fadeEl.style.setProperty("pointer-events", "none", "important");
-              fadeEl.style.setProperty("transition", "opacity 0.35s ease-out", "important");
+              fadeEl.style.setProperty("transition", "opacity " + FADE_OPACITY_DURATION + " ease-out", "important");
               fadeEl.style.setProperty("opacity", "0", "important");
               if (spec.removeAfterFade) {
                 (function (el) {
@@ -412,7 +415,7 @@
                       void el.offsetHeight;
                       el.style.setProperty(
                         "transition",
-                        "max-height 0.4s ease-in-out, margin 0.3s ease-in-out, padding 0.3s ease-in-out",
+                        FADE_COLLAPSE_TRANSITION,
                         "important"
                       );
                       el.style.setProperty("max-height", "0px", "important");
@@ -426,8 +429,8 @@
                         }
                         el.remove();
                       } catch (e3) { /* ignore */ }
-                    }, 450);
-                  }, 380);
+                    }, FADE_REMOVE_DELAY_MS);
+                  }, FADE_COLLAPSE_START_DELAY_MS);
                 })(fadeEl);
               }
             }
@@ -611,8 +614,10 @@
         Quilt.storageApi.getFollowedIdSet().then(function (fSet) {
           if (fSet.has(id)) {
             fSet.delete(id);
-            Quilt.storageApi.saveFollowedIdSet(fSet);
+            return Quilt.storageApi.saveFollowedIdSet(fSet);
           }
+        }).catch(function (e) {
+          Quilt.debugApi.log("updateProcessed (unfollow) storage error:", e);
         });
       },
       performClick: function (target) {
@@ -665,8 +670,10 @@
         Quilt.storageApi.getLikedTweetIdSet().then(function (likedSet) {
           if (likedSet.has(id)) {
             likedSet.delete(id);
-            Quilt.storageApi.saveLikedTweetIdSet(likedSet);
+            return Quilt.storageApi.saveLikedTweetIdSet(likedSet);
           }
+        }).catch(function (e) {
+          Quilt.debugApi.log("updateProcessed (unlike) storage error:", e);
         });
       },
       performClick: (function () {
