@@ -121,6 +121,10 @@
     var longMin = norm.longPauseMinMs;
     var longMax = norm.longPauseMaxMs;
 
+    if (Quilt.licenseApi && typeof Quilt.licenseApi.maybeRevalidate === "function") {
+      try { await Quilt.licenseApi.maybeRevalidate(); } catch (e) { /* offline — use cached tier */ }
+    }
+
     var freeFallback = (Quilt.TIER_LIMITS && Quilt.TIER_LIMITS.free && Quilt.TIER_LIMITS.free[norm.taskType])
       || { maxPerRun: null, maxPerDay: null };
     var tierLimits = freeFallback;

@@ -1,6 +1,6 @@
 {
   "name": "quilt",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "esbuild extension/ui/popup-entry.js --bundle --format=esm --minify --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/popup-bundle.js && esbuild extension/ui/sidepanel-entry.js --bundle --format=esm --minify --loader:.woff2=dataurl --loader:.woff=dataurl --outfile=extension/ui/sidepanel-bundle.js",

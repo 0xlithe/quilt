@@ -580,14 +580,14 @@
         var fqid = shared.extractFavoriteQueryId(rawUrl);
         if (fqid) {
           if (capturedFavoriteQueryId && capturedFavoriteQueryId !== fqid) {
-            console.warn("[quilt] FavoriteTweet queryId changed:", capturedFavoriteQueryId, "→", fqid);
+            if (window.Quilt && window.Quilt.debugApi && window.Quilt.debugApi.enabled) console.warn("[quilt] FavoriteTweet queryId changed:", capturedFavoriteQueryId, "→", fqid);
           }
           capturedFavoriteQueryId = fqid;
         }
         var ufqid = shared.extractUnfavoriteQueryId(rawUrl);
         if (ufqid) {
           if (capturedUnfavoriteQueryId && capturedUnfavoriteQueryId !== ufqid) {
-            console.warn("[quilt] UnfavoriteTweet queryId changed:", capturedUnfavoriteQueryId, "→", ufqid);
+            if (window.Quilt && window.Quilt.debugApi && window.Quilt.debugApi.enabled) console.warn("[quilt] UnfavoriteTweet queryId changed:", capturedUnfavoriteQueryId, "→", ufqid);
           }
           capturedUnfavoriteQueryId = ufqid;
         }

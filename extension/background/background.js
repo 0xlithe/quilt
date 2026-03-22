@@ -81,7 +81,9 @@ importScripts("../messaging/messaging.js");
     }
   });
 
-  /* ── License re-validation on startup (uses chrome.storage directly) ── */
+  /* ── License re-validation on startup (uses chrome.storage directly) ──
+     NOTE: This duplicates logic from core/license.js because service workers
+     cannot use window.Quilt. Keep both in sync when changing validation. */
   var LS_API = "https://api.lemonsqueezy.com/v1/licenses";
   var REVALIDATE_MS = 24 * 60 * 60 * 1000;
 
@@ -201,6 +203,22 @@ importScripts("../messaging/messaging.js");
               var le = chrome.runtime.lastError;
               if (le) {
                 sendResponse({ ok: false, error: le.message });
+                return;
+              }
+              if (res && !res.ok && res.error === "scripts_not_loaded" && msg.type === T.TASK_START) {
+                _injectedTabs.delete(tabId);
+                injectAllForTask(tabId, function (retryErr) {
+                  if (retryErr) { sendResponse({ ok: false, error: retryErr }); return; }
+                  setTimeout(function () {
+                    try {
+                      chrome.tabs.sendMessage(tabId, msg, function (r2) {
+                        var e2 = chrome.runtime.lastError;
+                        if (e2) { sendResponse({ ok: false, error: e2.message }); return; }
+                        sendResponse(r2 || { ok: true });
+                      });
+                    } catch (e) { sendResponse({ ok: false, error: "tab_send_failed" }); }
+                  }, 150);
+                });
                 return;
               }
               sendResponse(res || { ok: true });

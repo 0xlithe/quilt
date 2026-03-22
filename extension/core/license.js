@@ -4,6 +4,8 @@
   var Quilt = (window.Quilt = window.Quilt || {});
   var SK = Quilt.STORAGE_KEYS;
 
+  /* NOTE: Validate logic is duplicated in background/background.js for the
+     service worker context (no window.Quilt). Keep both in sync. */
   var LS_API = "https://api.lemonsqueezy.com/v1/licenses";
   var REVALIDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
   var OFFLINE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -61,7 +63,7 @@
     if (!licenseData) return "free";
     var status = licenseData.status;
     if (status !== "active") return "free";
-    var validated = licenseData.validatedAt || 0;
+    var validated = Math.min(licenseData.validatedAt || 0, Date.now());
     if (Date.now() - validated > OFFLINE_GRACE_MS) return "free";
     return "premium";
   }
