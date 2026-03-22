@@ -12,6 +12,58 @@
     <style>
       body {
         min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ── Tab bar ── */
+
+      .tab-bar {
+        display: flex;
+        gap: 0;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #1e1e20;
+      }
+
+      .tab-btn {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        color: #71767b;
+        font-family: 'Manrope', system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 10px 0;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: color 0.15s, border-color 0.15s;
+      }
+
+      .tab-btn:hover { color: #8b9198; }
+
+      .tab-btn.active {
+        color: #e7e9ea;
+        border-bottom-color: #e7e9ea;
+      }
+
+      .tab-content {
+        display: block;
+        visibility: hidden;
+        height: 0;
+        overflow: hidden;
+        pointer-events: none;
+        position: absolute;
+        opacity: 0;
+      }
+
+      .tab-content.active {
+        visibility: visible;
+        height: auto;
+        overflow: visible;
+        pointer-events: auto;
+        position: static;
+        opacity: 1;
+        animation: fadeIn 200ms ease-out;
       }
 
       /* ── Timer / Progress panel ── */
@@ -23,9 +75,7 @@
         animation: stagger 250ms ease-out 200ms both;
       }
 
-      .timer-panel.hidden {
-        display: none;
-      }
+      .timer-panel.hidden { display: none; }
 
       .timer-row {
         display: flex;
@@ -110,9 +160,7 @@
         animation: stagger 250ms ease-out 200ms both;
       }
 
-      .idle-state.hidden {
-        display: none;
-      }
+      .idle-state.hidden { display: none; }
 
       .idle-icon {
         width: 40px;
@@ -127,6 +175,407 @@
         line-height: 1.5;
       }
 
+      /* ── Search tab ── */
+
+      .search-sub-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 14px;
+        background: #141416;
+        border-radius: 10px;
+        padding: 3px;
+      }
+
+      .search-sub-btn {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        color: #71767b;
+        font-family: 'Manrope', system-ui, sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 7px 0;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background 0.15s, color 0.15s;
+      }
+
+      .search-sub-btn:hover { color: #8b9198; }
+
+      .search-sub-btn.active {
+        background: #2a2a2e;
+        color: #e7e9ea;
+      }
+
+      .search-sub-content {
+        display: block;
+        visibility: hidden;
+        height: 0;
+        overflow: hidden;
+        pointer-events: none;
+        position: absolute;
+        opacity: 0;
+      }
+
+      .search-sub-content.active {
+        visibility: visible;
+        height: auto;
+        overflow: visible;
+        pointer-events: auto;
+        position: static;
+        opacity: 1;
+        animation: fadeIn 180ms ease-out;
+      }
+
+      /* ── Search builder ── */
+
+      .builder-section {
+        margin-bottom: 12px;
+        animation: stagger 200ms ease-out both;
+      }
+
+      .builder-section:nth-child(2) { animation-delay: 30ms; }
+      .builder-section:nth-child(3) { animation-delay: 60ms; }
+      .builder-section:nth-child(4) { animation-delay: 90ms; }
+      .builder-section:nth-child(5) { animation-delay: 120ms; }
+      .builder-section:nth-child(6) { animation-delay: 150ms; }
+      .builder-section:nth-child(7) { animation-delay: 180ms; }
+
+      .builder-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #8b9198;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+      }
+
+      .builder-checks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        margin-bottom: 10px;
+      }
+
+      .builder-check-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #e7e9ea;
+        cursor: pointer;
+      }
+
+      .builder-check-label input[type="checkbox"] {
+        accent-color: #e7e9ea;
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        outline: none;
+      }
+
+      .builder-check-label input[type="checkbox"]:focus-visible {
+        outline: 1px solid #e7e9ea;
+        outline-offset: 2px;
+      }
+
+      md-outlined-text-field[disabled] {
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      .query-preview {
+        background: #141416;
+        border: 1px solid #2f3336;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 12px;
+        font-family: 'Manrope', monospace;
+        color: #8b9198;
+        min-height: 36px;
+        word-break: break-all;
+        margin-bottom: 12px;
+        transition: color 0.15s;
+      }
+
+      .query-preview.has-query { color: #e7e9ea; }
+
+      .builder-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .builder-actions md-outlined-button:last-child {
+        flex: 0 0 auto;
+      }
+
+      /* ── Saved searches list ── */
+
+      .search-filter-bar {
+        margin-bottom: 12px;
+      }
+
+      .search-card {
+        background: #141416;
+        border: 1px solid #2f3336;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: border-color 0.15s, transform 0.1s;
+        border-left: 3px solid #6b7280;
+        position: relative;
+      }
+
+      .search-card:hover {
+        border-color: #4a4e54;
+        transform: translateY(-1px);
+      }
+
+      .search-card.dragging {
+        opacity: 0.5;
+        transform: scale(0.98);
+        transition: opacity 0.15s, transform 0.15s;
+      }
+
+      .search-card-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: #e7e9ea;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .search-card-query {
+        font-size: 11px;
+        color: #71767b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 6px;
+      }
+
+      .search-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10px;
+      }
+
+      .search-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #e7e9ea;
+        letter-spacing: 0.02em;
+      }
+
+      .search-cat-chip {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 6px;
+        font-size: 10px;
+        color: #8b9198;
+        border: 1px solid #2f3336;
+      }
+
+      .search-card-actions {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+
+      .search-card:hover .search-card-actions { opacity: 1; }
+
+      .search-icon-btn {
+        background: none;
+        border: none;
+        outline: none;
+        color: #71767b;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: color 0.1s, background 0.1s;
+        display: flex;
+        align-items: center;
+      }
+
+      .search-icon-btn:hover {
+        color: #e7e9ea;
+        background: #2a2a2e;
+      }
+
+      .search-icon-btn.delete:hover { color: #f4212e; }
+
+      .search-icon-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* ── Categories ── */
+
+      .cat-list { list-style: none; padding: 0; margin: 0; }
+
+      .cat-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        margin-bottom: 4px;
+        transition: background 0.1s;
+      }
+
+      .cat-item:hover { background: #141416; }
+
+      .cat-swatch {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.12);
+        cursor: pointer;
+        flex-shrink: 0;
+        padding: 0;
+        outline: none;
+      }
+
+      .cat-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+      .cat-swatch::-webkit-color-swatch {
+        border: none;
+        border-radius: 5px;
+      }
+
+      .cat-name {
+        flex: 1;
+        font-size: 13px;
+        color: #e7e9ea;
+        outline: none;
+        border-radius: 4px;
+        padding: 1px 4px;
+        margin: -1px -4px;
+        transition: background 0.15s;
+      }
+
+      .cat-name:focus {
+        background: #1e1e20;
+      }
+
+      .cat-name[contenteditable="false"] {
+        cursor: default;
+      }
+
+      .cat-count {
+        font-size: 11px;
+        color: #71767b;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .cat-add-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        align-items: flex-end;
+      }
+
+      .cat-color-input {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 40px;
+        height: 40px;
+        border: 1px solid #2f3336;
+        border-radius: 10px;
+        cursor: pointer;
+        padding: 0;
+        background: none;
+        outline: none;
+        flex-shrink: 0;
+      }
+
+      .cat-color-input::-webkit-color-swatch-wrapper { padding: 2px; }
+      .cat-color-input::-webkit-color-swatch {
+        border: none;
+        border-radius: 8px;
+      }
+
+      /* ── Empty state ── */
+
+      .empty-state {
+        text-align: center;
+        padding: 28px 16px;
+        color: #71767b;
+        font-size: 13px;
+        line-height: 1.5;
+        animation: stagger 200ms ease-out both;
+      }
+
+      /* ── Editing banner ── */
+
+      .edit-banner {
+        display: none;
+        background: #2a2a2e;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        font-size: 12px;
+        color: #e7e9ea;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .edit-banner.active { display: flex; }
+
+      .edit-banner-cancel {
+        background: none;
+        border: none;
+        outline: none;
+        color: #f4212e;
+        font-family: 'Manrope', system-ui, sans-serif;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+
+      .edit-banner-cancel:hover { background: #3a1a1a; }
+
+      /* ── Save dialog ── */
+
+      .save-dialog {
+        display: none;
+        background: #1c1c1e;
+        border: 1px solid #2f3336;
+        border-radius: 10px;
+        padding: 14px;
+        margin-top: 12px;
+        margin-bottom: 12px;
+      }
+
+      .save-dialog.active { display: block; animation: fadeIn 180ms ease-out; }
+
+      .save-dialog-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #e7e9ea;
+        margin-bottom: 10px;
+      }
+
+      .save-dialog-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
     </style>
   </head>
   <body>
@@ -137,77 +586,229 @@
       </h1>
     </div>
 
-    <div class="field">
-      <md-outlined-select id="taskType" label="Task mode">
-        <md-select-option value="follow" selected>
-          <div slot="headline">Follow</div>
-        </md-select-option>
-        <md-select-option value="unfollow">
-          <div slot="headline">Unfollow</div>
-        </md-select-option>
-        <md-select-option value="like">
-          <div slot="headline">Like</div>
-        </md-select-option>
-        <md-select-option value="unlike">
-          <div slot="headline">Unlike</div>
-        </md-select-option>
-      </md-outlined-select>
+    <!-- ── Tab bar ── -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="tasks">Tasks</button>
+      <button class="tab-btn" data-tab="search">Search</button>
     </div>
 
-    <div class="field">
-      <md-outlined-text-field id="maxPostAmount" label="Max actions" type="number" min="1" value="50"></md-outlined-text-field>
-    </div>
-
-    <div class="field-row">
+    <!-- ════════════════ TASKS TAB ════════════════ -->
+    <div id="tabTasks" class="tab-content active">
       <div class="field">
-        <md-outlined-text-field id="delayMin" label="Delay min (ms)" type="number" min="0" value="4000"></md-outlined-text-field>
+        <md-outlined-select id="taskType" label="Task mode">
+          <md-select-option value="follow" selected><div slot="headline">Follow</div></md-select-option>
+          <md-select-option value="unfollow"><div slot="headline">Unfollow</div></md-select-option>
+          <md-select-option value="like"><div slot="headline">Like</div></md-select-option>
+          <md-select-option value="unlike"><div slot="headline">Unlike</div></md-select-option>
+        </md-outlined-select>
       </div>
+
       <div class="field">
-        <md-outlined-text-field id="delayMax" label="Delay max (ms)" type="number" min="0" value="8000"></md-outlined-text-field>
+        <md-outlined-text-field id="maxPostAmount" label="Max actions" type="number" min="1" value="50"></md-outlined-text-field>
       </div>
+
+      <div class="field-row">
+        <div class="field"><md-outlined-text-field id="delayMin" label="Delay min (ms)" type="number" min="0" value="4000"></md-outlined-text-field></div>
+        <div class="field"><md-outlined-text-field id="delayMax" label="Delay max (ms)" type="number" min="0" value="8000"></md-outlined-text-field></div>
+      </div>
+
+      <div class="quilt-advanced-hidden" aria-hidden="true">
+        <md-outlined-text-field id="longPauseEvery" label="Long pause every N (0=off)" type="number" min="0" value="0"></md-outlined-text-field>
+        <md-outlined-text-field id="longPauseMin" label="Long pause min (ms)" type="number" min="0" value="15000"></md-outlined-text-field>
+        <md-outlined-text-field id="longPauseMax" label="Long pause max (ms)" type="number" min="0" value="45000"></md-outlined-text-field>
+      </div>
+
+      <div class="actions">
+        <div class="row">
+          <md-filled-button id="btnStart">Start</md-filled-button>
+          <md-outlined-button id="btnStop" class="btn-stop">Stop</md-outlined-button>
+        </div>
+      </div>
+
+      <div id="timerPanel" class="timer-panel hidden">
+        <div class="timer-row">
+          <span id="elapsed" class="timer-elapsed">00:00</span>
+          <span class="timer-label">elapsed</span>
+        </div>
+        <div class="progress-label">
+          <span id="progressVerb">Following</span>
+          <span id="progressCount" class="count">0 / 0</span>
+        </div>
+        <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+      </div>
+
+      <div id="idleState" class="idle-state">
+        <svg class="idle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <div class="idle-text">Ready to start a task</div>
+      </div>
+
+      <div class="status-section"><div id="status" class="status-text"></div></div>
     </div>
 
-    <div class="quilt-advanced-hidden" aria-hidden="true">
-      <md-outlined-text-field id="longPauseEvery" label="Long pause every N (0=off)" type="number" min="0" value="0"></md-outlined-text-field>
-      <md-outlined-text-field id="longPauseMin" label="Long pause min (ms)" type="number" min="0" value="15000"></md-outlined-text-field>
-      <md-outlined-text-field id="longPauseMax" label="Long pause max (ms)" type="number" min="0" value="45000"></md-outlined-text-field>
-    </div>
+    <!-- ════════════════ SEARCH TAB ════════════════ -->
+    <div id="tabSearch" class="tab-content">
 
-    <div class="actions">
-      <div class="row">
-        <md-filled-button id="btnStart">Start</md-filled-button>
-        <md-outlined-button id="btnStop" class="btn-stop">Stop</md-outlined-button>
+      <div class="search-sub-tabs">
+        <button class="search-sub-btn active" data-sub="builder">Builder</button>
+        <button class="search-sub-btn" data-sub="saved">Saved</button>
+        <button class="search-sub-btn" data-sub="categories">Categories</button>
       </div>
-    </div>
 
-    <!-- Timer / Progress — visible when a task is active -->
-    <div id="timerPanel" class="timer-panel hidden">
-      <div class="timer-row">
-        <span id="elapsed" class="timer-elapsed">00:00</span>
-        <span class="timer-label">elapsed</span>
-      </div>
-      <div class="progress-label">
-        <span id="progressVerb">Following</span>
-        <span id="progressCount" class="count">0 / 0</span>
-      </div>
-      <div class="progress-track">
-        <div id="progressFill" class="progress-fill"></div>
-      </div>
-    </div>
+      <!-- ── Builder sub-tab ── -->
+      <div id="subBuilder" class="search-sub-content active">
 
-    <!-- Idle state — visible when no task is running -->
-    <div id="idleState" class="idle-state">
-      <svg class="idle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-      </svg>
-      <div class="idle-text">Ready to start a task</div>
-    </div>
+        <div id="editBanner" class="edit-banner">
+          <span>Editing: <strong id="editBannerName"></strong></span>
+          <button class="edit-banner-cancel" id="editCancelBtn">Cancel</button>
+        </div>
 
-    <div class="status-section">
-      <div id="status" class="status-text"></div>
+        <div class="builder-section">
+          <md-outlined-text-field id="sqKeywords" label="Keywords" style="width:100%"></md-outlined-text-field>
+        </div>
+
+        <div class="builder-section">
+          <div class="builder-section-title">Engagement</div>
+          <div class="field-row">
+            <div class="field"><md-outlined-text-field id="sqMinFaves" label="Min likes" type="number" min="0" style="width:100%"></md-outlined-text-field></div>
+            <div class="field"><md-outlined-text-field id="sqMaxFaves" label="Max likes" type="number" min="0" style="width:100%"></md-outlined-text-field></div>
+          </div>
+          <div class="field-row" style="margin-top:10px">
+            <div class="field"><md-outlined-text-field id="sqMinRetweets" label="Min retweets" type="number" min="0" style="width:100%"></md-outlined-text-field></div>
+            <div class="field"><md-outlined-text-field id="sqMaxRetweets" label="Max retweets" type="number" min="0" style="width:100%"></md-outlined-text-field></div>
+          </div>
+          <div class="field-row" style="margin-top:10px">
+            <div class="field"><md-outlined-text-field id="sqMinReplies" label="Min replies" type="number" min="0" style="width:100%"></md-outlined-text-field></div>
+            <div class="field"><md-outlined-text-field id="sqMaxReplies" label="Max replies" type="number" min="0" style="width:100%"></md-outlined-text-field></div>
+          </div>
+        </div>
+
+        <div class="builder-section">
+          <div class="builder-section-title">Time window</div>
+          <md-outlined-select id="sqSlidingWindow" label="Sliding window" style="width:100%">
+            <md-select-option value="" selected><div slot="headline">None</div></md-select-option>
+            <md-select-option value="1d"><div slot="headline">Last 24 hours</div></md-select-option>
+            <md-select-option value="1w"><div slot="headline">Last week</div></md-select-option>
+            <md-select-option value="1m"><div slot="headline">Last month</div></md-select-option>
+          </md-outlined-select>
+          <div class="field-row" style="margin-top:10px">
+            <div class="field"><md-outlined-text-field id="sqSinceDate" label="Since date" type="date" style="width:100%"></md-outlined-text-field></div>
+            <div class="field"><md-outlined-text-field id="sqUntilDate" label="Until date" type="date" style="width:100%"></md-outlined-text-field></div>
+          </div>
+        </div>
+
+        <div class="builder-section">
+          <div class="builder-section-title">Users</div>
+          <div class="field-row">
+            <div class="field"><md-outlined-text-field id="sqFromUser" label="From" style="width:100%"></md-outlined-text-field></div>
+            <div class="field"><md-outlined-text-field id="sqToUser" label="To" style="width:100%"></md-outlined-text-field></div>
+          </div>
+          <div style="margin-top:10px">
+            <md-outlined-text-field id="sqMentionsUser" label="Mentions" style="width:100%"></md-outlined-text-field>
+          </div>
+          <div class="builder-checks" style="margin-top:10px">
+            <label class="builder-check-label"><input type="checkbox" id="sqBlueVerified" /> Verified only</label>
+            <label class="builder-check-label"><input type="checkbox" id="sqFollows" /> From follows</label>
+          </div>
+        </div>
+
+        <div class="builder-section">
+          <div class="builder-section-title">Content type</div>
+          <div class="builder-checks">
+            <label class="builder-check-label"><input type="checkbox" id="sqHasMedia" /> Media</label>
+            <label class="builder-check-label"><input type="checkbox" id="sqHasImages" /> Images</label>
+            <label class="builder-check-label"><input type="checkbox" id="sqHasVideos" /> Videos</label>
+            <label class="builder-check-label"><input type="checkbox" id="sqHasLinks" /> Links</label>
+            <label class="builder-check-label"><input type="checkbox" id="sqQuoteOnly" /> Quotes only</label>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <md-outlined-select id="sqReplies" label="Replies" style="width:100%">
+                <md-select-option value="" selected><div slot="headline">Any</div></md-select-option>
+                <md-select-option value="exclude"><div slot="headline">Exclude</div></md-select-option>
+                <md-select-option value="only"><div slot="headline">Only</div></md-select-option>
+              </md-outlined-select>
+            </div>
+            <div class="field">
+              <md-outlined-select id="sqRetweets" label="Retweets" style="width:100%">
+                <md-select-option value="" selected><div slot="headline">Any</div></md-select-option>
+                <md-select-option value="exclude"><div slot="headline">Exclude</div></md-select-option>
+                <md-select-option value="only"><div slot="headline">Only</div></md-select-option>
+              </md-outlined-select>
+            </div>
+          </div>
+        </div>
+
+        <div class="builder-section">
+          <div class="builder-section-title">Language</div>
+          <md-outlined-select id="sqLang" label="Language" style="width:100%">
+            <md-select-option value="" selected><div slot="headline">Any</div></md-select-option>
+            <md-select-option value="en"><div slot="headline">English</div></md-select-option>
+            <md-select-option value="es"><div slot="headline">Spanish</div></md-select-option>
+            <md-select-option value="fr"><div slot="headline">French</div></md-select-option>
+            <md-select-option value="de"><div slot="headline">German</div></md-select-option>
+            <md-select-option value="ja"><div slot="headline">Japanese</div></md-select-option>
+            <md-select-option value="pt"><div slot="headline">Portuguese</div></md-select-option>
+            <md-select-option value="ar"><div slot="headline">Arabic</div></md-select-option>
+            <md-select-option value="ko"><div slot="headline">Korean</div></md-select-option>
+            <md-select-option value="zh"><div slot="headline">Chinese</div></md-select-option>
+            <md-select-option value="hi"><div slot="headline">Hindi</div></md-select-option>
+            <md-select-option value="it"><div slot="headline">Italian</div></md-select-option>
+            <md-select-option value="ru"><div slot="headline">Russian</div></md-select-option>
+          </md-outlined-select>
+        </div>
+
+        <div class="builder-section-title">Preview</div>
+        <div id="queryPreview" class="query-preview">No filters set</div>
+
+        <div class="builder-actions">
+          <md-filled-button id="btnApplySearch" style="flex:1">Apply</md-filled-button>
+          <md-outlined-button id="btnSaveSearch" style="flex:1">Save</md-outlined-button>
+          <md-outlined-button id="btnResetSearch">Clear</md-outlined-button>
+        </div>
+
+        <!-- Save dialog (appears when Save clicked) -->
+        <div id="saveDialog" class="save-dialog">
+          <div class="save-dialog-title">Save search</div>
+          <md-outlined-text-field id="sqSaveName" label="Name" style="width:100%"></md-outlined-text-field>
+          <div style="margin-top:8px">
+            <md-outlined-select id="sqSaveCategory" label="Category" style="width:100%">
+            </md-outlined-select>
+          </div>
+          <div class="save-dialog-actions">
+            <md-filled-button id="btnConfirmSave" style="flex:1">Save</md-filled-button>
+            <md-outlined-button id="btnCancelSave">Cancel</md-outlined-button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Saved sub-tab ── -->
+      <div id="subSaved" class="search-sub-content">
+        <div class="search-filter-bar">
+          <md-outlined-text-field id="sqFilterInput" label="Filter searches" style="width:100%"></md-outlined-text-field>
+        </div>
+        <div id="savedSearchList"></div>
+      </div>
+
+      <!-- ── Categories sub-tab ── -->
+      <div id="subCategories" class="search-sub-content">
+        <ul id="categoryList" class="cat-list"></ul>
+        <div class="cat-add-row">
+          <md-outlined-text-field id="catNewName" label="New category" style="flex:1"></md-outlined-text-field>
+          <input type="color" id="catNewColor" class="cat-color-input" value="#6b7280" />
+          <md-filled-button id="btnAddCategory">Add</md-filled-button>
+        </div>
+      </div>
+
     </div>
 
     <script src="../messaging/messaging.js"></script>
+    <script src="../storage/storage.js"></script>
+    <script src="../lib/queryBuilder.js"></script>
+    <script src="../storage/searchStorage.js"></script>
+    <script src="../lib/searchTemplates.js"></script>
     <script src="sidepanel.js"></script>
   </body>
 </html>

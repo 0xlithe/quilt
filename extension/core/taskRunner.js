@@ -223,7 +223,17 @@
 
           if (spec.flatDelay) {
             if (emptyStreak % 3 === 1) {
-              await Quilt.domActionsApi.scrollFeed();
+              if (typeof spec.scrollPixels === "number" && spec.scrollPixels > 0) {
+                var eScr = Quilt.domActionsApi.getFeedScrollElement();
+                var eDy = Quilt.delayApi.randomInt(
+                  Math.round(spec.scrollPixels * 0.8),
+                  Math.round(spec.scrollPixels * 1.2)
+                );
+                if (eScr) eScr.scrollTop += eDy;
+                else window.scrollBy(0, eDy);
+              } else {
+                await Quilt.domActionsApi.scrollFeed();
+              }
             }
             await Quilt.delayApi.sleep(Quilt.delayApi.randomInt(1500, 3000));
           } else {
@@ -387,7 +397,9 @@
         session.onSuccessfulAction();
         done += 1;
 
-        if (spec.flatDelay) {
+        if (typeof spec.onSuccessVisual === "function") {
+          try { await spec.onSuccessVisual(btn); } catch (e) { /* ignore */ }
+        } else if (spec.flatDelay) {
           try {
             var fadeEl = null;
             if (typeof spec.getFadeTarget === "function") {
@@ -448,7 +460,17 @@
 
         if (spec.flatDelay && done > 0 && done % 5 === 0) {
           Quilt.debugApi.log("flatDelay: batch scroll after", done, "actions");
-          await Quilt.domActionsApi.scrollFeed();
+          if (typeof spec.scrollPixels === "number" && spec.scrollPixels > 0) {
+            var scr = Quilt.domActionsApi.getFeedScrollElement();
+            var dy = Quilt.delayApi.randomInt(
+              Math.round(spec.scrollPixels * 0.8),
+              Math.round(spec.scrollPixels * 1.2)
+            );
+            if (scr) scr.scrollTop += dy;
+            else window.scrollBy(0, dy);
+          } else {
+            await Quilt.domActionsApi.scrollFeed();
+          }
           await Quilt.delayApi.sleep(Quilt.delayApi.randomInt(1000, 2000));
         } else if (spec.postSuccessScroll) {
           Quilt.debugApi.log("postSuccessScroll: nudging feed after success");
@@ -543,10 +565,11 @@
     await self._runActionTask(norm, {
       actionLabel: "Like",
       flatDelay: true,
+      scrollPixels: 350,
       maxEmptyIterations: 60,
       postSuccessScroll: false,
-      getFadeTarget: function (btn) {
-        return Quilt.domActionsApi.getTweetArticle(btn);
+      onSuccessVisual: function (btn) {
+        return Quilt.domActionsApi.playHeartOverlay(btn);
       },
       getButtons: function (set) {
         return Quilt.domActionsApi.getLikeButtons(set);

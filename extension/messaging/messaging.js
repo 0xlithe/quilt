@@ -15,6 +15,11 @@
     LAST_STATUS: "quilt_last_status",
     DEBUG_ENABLED: "quilt_debug_enabled",
     SIDEBAR_ON_CLICK: "quilt_sidebar_on_click",
+    SAVED_SEARCHES: "quilt_saved_searches",
+    SEARCH_CATEGORIES: "quilt_search_categories",
+    SEARCH_CATEGORY_COLORS: "quilt_search_category_colors",
+    SEARCH_TEMPLATES_INIT: "quilt_search_templates_initialized",
+    SIDEPANEL_TAB: "quilt_sidepanel_tab",
   };
 
   Quilt.TASK_DEFAULTS = {

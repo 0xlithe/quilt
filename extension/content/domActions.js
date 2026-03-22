@@ -1616,6 +1616,129 @@
     Quilt.debugApi.log("uninstallFeedObserver: disconnected");
   }
 
+  var HEART_SVG_PATH = "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 " +
+    "2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 " +
+    "19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
+
+  var SPARKLE_STYLE_ID = "quilt-heart-sparkle-style";
+
+  function ensureSparkleKeyframes() {
+    if (document.getElementById(SPARKLE_STYLE_ID)) return;
+    var style = document.createElement("style");
+    style.id = SPARKLE_STYLE_ID;
+    style.textContent =
+      "@keyframes quiltHeartSpring{0%{transform:scale(0);opacity:1}" +
+      "50%{transform:scale(1.35)}" +
+      "70%{transform:scale(0.9)}" +
+      "85%{transform:scale(1.1)}" +
+      "100%{transform:scale(1);opacity:1}}" +
+      "@keyframes quiltHeartFadeOut{0%{opacity:1;transform:scale(1)}" +
+      "100%{opacity:0;transform:scale(0.6)}}" +
+      "@keyframes quiltSparkle{0%{transform:translate(0,0) scale(1);opacity:1}" +
+      "100%{opacity:0}}" +
+      "@keyframes quiltSparkleGlow{0%{opacity:0.7;transform:scale(0.8)}" +
+      "50%{opacity:1;transform:scale(1.2)}" +
+      "100%{opacity:0;transform:scale(1.6)}}";
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function playHeartOverlay(likeButton) {
+    ensureSparkleKeyframes();
+
+    var article = getTweetArticle(likeButton);
+    try {
+      (article || likeButton).scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (e) { /* ignore */ }
+
+    var SCROLL_SETTLE_MS = 350;
+
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        var rect = likeButton.getBoundingClientRect();
+        var size = Math.max(rect.width, rect.height, 36) * 1.6;
+
+        var container = document.createElement("div");
+        container.style.cssText =
+          "position:fixed;z-index:2147483647;pointer-events:none;" +
+          "left:" + (rect.left + rect.width / 2 - size / 2) + "px;" +
+          "top:" + (rect.top + rect.height / 2 - size / 2) + "px;" +
+          "width:" + size + "px;height:" + size + "px;";
+
+        var ns = "http://www.w3.org/2000/svg";
+
+        var svg = document.createElementNS(ns, "svg");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("width", String(size));
+        svg.setAttribute("height", String(size));
+        svg.style.cssText =
+          "display:block;animation:quiltHeartSpring 0.45s cubic-bezier(.34,1.56,.64,1) forwards;";
+
+        var path = document.createElementNS(ns, "path");
+        path.setAttribute("d", HEART_SVG_PATH);
+        path.setAttribute("fill", "#f91880");
+        path.setAttribute("stroke", "none");
+        svg.appendChild(path);
+        container.appendChild(svg);
+
+        var sparkleCount = 6;
+        var sparkleRadius = size * 0.7;
+        for (var i = 0; i < sparkleCount; i++) {
+          var angle = (Math.PI * 2 * i) / sparkleCount - Math.PI / 2;
+          var dx = Math.cos(angle) * sparkleRadius;
+          var dy = Math.sin(angle) * sparkleRadius;
+          var dot = document.createElement("div");
+          var dotSize = 4 + Math.random() * 3;
+          var hue = 330 + Math.random() * 40;
+          dot.style.cssText =
+            "position:absolute;border-radius:50%;" +
+            "width:" + dotSize + "px;height:" + dotSize + "px;" +
+            "background:hsl(" + hue + ",90%,60%);" +
+            "left:" + (size / 2 - dotSize / 2) + "px;" +
+            "top:" + (size / 2 - dotSize / 2) + "px;" +
+            "animation:quiltSparkle 0.5s " + (0.1 + i * 0.04) + "s ease-out forwards;" +
+            "transform:translate(" + dx + "px," + dy + "px) scale(1);";
+          container.appendChild(dot);
+        }
+
+        var glow = document.createElement("div");
+        var glowSize = size * 1.3;
+        glow.style.cssText =
+          "position:absolute;border-radius:50%;" +
+          "width:" + glowSize + "px;height:" + glowSize + "px;" +
+          "left:" + (size / 2 - glowSize / 2) + "px;" +
+          "top:" + (size / 2 - glowSize / 2) + "px;" +
+          "background:radial-gradient(circle,rgba(249,24,128,0.25) 0%,transparent 70%);" +
+          "animation:quiltSparkleGlow 0.5s ease-out forwards;pointer-events:none;";
+        container.appendChild(glow);
+
+        document.body.appendChild(container);
+
+        setTimeout(function () {
+          svg.style.animation = "quiltHeartFadeOut 0.3s ease-in forwards";
+          setTimeout(function () {
+            try { container.remove(); } catch (e2) { /* ignore */ }
+            if (article) {
+              try {
+                var btnSvg = likeButton.querySelector("svg");
+                if (btnSvg) btnSvg.style.setProperty("color", "#f91880", "important");
+                article.style.transition = "opacity 0.3s ease-out";
+                article.style.opacity = "0.45";
+                setTimeout(function () {
+                  article.style.opacity = "1";
+                  resolve();
+                }, 600);
+              } catch (e3) {
+                resolve();
+              }
+            } else {
+              resolve();
+            }
+          }, 350);
+        }, 700);
+      }, SCROLL_SETTLE_MS);
+    });
+  }
+
   Quilt.domActionsApi = {
     getUserCellTargets: getUserCellTargets,
     getUserCellUnfollowTargets: getUserCellUnfollowTargets,
@@ -1648,5 +1771,6 @@
     countUserCellsTotal: countUserCellsTotal,
     installFeedObserver: installFeedObserver,
     uninstallFeedObserver: uninstallFeedObserver,
+    playHeartOverlay: playHeartOverlay,
   };
 })();

@@ -22,6 +22,10 @@ importScripts("../messaging/messaging.js");
     "core/taskRunner.js",
     "content/badges.js",
     "content/content.js",
+    "lib/queryBuilder.js",
+    "storage/searchStorage.js",
+    "lib/searchTemplates.js",
+    "content/searchApply.js",
   ];
 
   var MAIN_WORLD_SCRIPTS = [
