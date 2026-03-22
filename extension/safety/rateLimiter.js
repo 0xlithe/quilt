@@ -5,16 +5,24 @@
 
   var DEFAULT_MAX_PER_RUN = 20;
 
+  function clamp(userVal, tierVal) {
+    if (tierVal == null) return userVal;
+    if (userVal == null) return tierVal;
+    return Math.min(userVal, tierVal);
+  }
+
   function RateLimiter(options) {
     var o = options || {};
-    this.maxPerDay =
-      typeof o.maxPerDay === "number" &&
-      Number.isFinite(o.maxPerDay) &&
-      o.maxPerDay >= 1
-        ? o.maxPerDay
-        : null;
-    this.maxPerRun =
-      typeof o.maxPerRun === "number" ? o.maxPerRun : DEFAULT_MAX_PER_RUN;
+
+    var tierMaxPerRun = o.tierMaxPerRun != null ? o.tierMaxPerRun : null;
+    var tierMaxPerDay = o.tierMaxPerDay != null ? o.tierMaxPerDay : null;
+
+    var userMaxPerRun = typeof o.maxPerRun === "number" ? o.maxPerRun : DEFAULT_MAX_PER_RUN;
+
+    this.maxPerRun = clamp(userMaxPerRun, tierMaxPerRun);
+    this.maxPerDay = typeof o.maxPerDay === "number" && Number.isFinite(o.maxPerDay) && o.maxPerDay >= 1
+      ? clamp(o.maxPerDay, tierMaxPerDay)
+      : tierMaxPerDay;
     this.runCount = 0;
     this.suspicionPause = false;
   }
@@ -31,7 +39,7 @@
       });
     }
     var self = this;
-    if (self.runCount >= self.maxPerRun) {
+    if (self.maxPerRun != null && self.runCount >= self.maxPerRun) {
       return Promise.resolve({
         ok: false,
         reason: "run_limit",

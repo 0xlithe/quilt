@@ -20,6 +20,8 @@
     SEARCH_CATEGORY_COLORS: "quilt_search_category_colors",
     SEARCH_TEMPLATES_INIT: "quilt_search_templates_initialized",
     SIDEPANEL_TAB: "quilt_sidepanel_tab",
+    LICENSE: "quilt_license",
+    DEVICE_ID: "quilt_device_id",
   };
 
   Quilt.TASK_DEFAULTS = {

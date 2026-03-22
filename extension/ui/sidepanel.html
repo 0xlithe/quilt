@@ -550,6 +550,50 @@
 
       .edit-banner-cancel:hover { background: #3a1a1a; }
 
+      /* ── Tier badge ── */
+
+      .tier-badge {
+        display: inline-flex;
+        align-items: center;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 6px;
+        margin-left: 8px;
+        vertical-align: middle;
+        line-height: 1;
+      }
+
+      .tier-badge.free {
+        background: #2a2a2e;
+        color: #71767b;
+      }
+
+      .tier-badge.pro {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        color: #fff;
+      }
+
+      .tier-limit-hint {
+        font-size: 11px;
+        color: #71767b;
+        margin-top: 4px;
+        margin-bottom: 2px;
+      }
+
+      .tier-limit-hint a {
+        color: #e7e9ea;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        cursor: pointer;
+        opacity: 0.8;
+        transition: opacity 0.15s;
+      }
+
+      .tier-limit-hint a:hover { opacity: 1; }
+
       /* ── Save dialog ── */
 
       .save-dialog {
@@ -583,6 +627,7 @@
       <img class="brand-mark" src="../assets/icon-48.png" alt="quilt icon" />
       <h1>quilt<span class="sep">&bull;</span><span class="sub">for</span>
         <svg class="x-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        <span id="tierBadge" class="tier-badge free">FREE</span>
       </h1>
     </div>
 
@@ -605,6 +650,7 @@
 
       <div class="field">
         <md-outlined-text-field id="maxPostAmount" label="Max actions" type="number" min="1" value="50"></md-outlined-text-field>
+        <div id="tierLimitHint" class="tier-limit-hint" style="display:none"></div>
       </div>
 
       <div class="field-row">
@@ -806,6 +852,8 @@
 
     <script src="../messaging/messaging.js"></script>
     <script src="../storage/storage.js"></script>
+    <script src="../core/tierLimits.js"></script>
+    <script src="../core/license.js"></script>
     <script src="../lib/queryBuilder.js"></script>
     <script src="../storage/searchStorage.js"></script>
     <script src="../lib/searchTemplates.js"></script>

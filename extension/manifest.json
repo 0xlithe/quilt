@@ -5,7 +5,7 @@
   "version": "0.3.0",
   "description": "A focused automation workspace for X with human-tuned timing, task controls, and session safety.",
   "permissions": ["storage", "activeTab", "tabs", "scripting", "sidePanel"],
-  "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "host_permissions": ["https://x.com/*", "https://twitter.com/*", "https://api.lemonsqueezy.com/*"],
   "icons": {
     "16": "assets/icon-16.png",
     "32": "assets/icon-32.png",

@@ -121,6 +121,18 @@
     var longMin = norm.longPauseMinMs;
     var longMax = norm.longPauseMaxMs;
 
+    var freeFallback = (Quilt.TIER_LIMITS && Quilt.TIER_LIMITS.free && Quilt.TIER_LIMITS.free[norm.taskType])
+      || { maxPerRun: null, maxPerDay: null };
+    var tierLimits = freeFallback;
+    if (Quilt.licenseApi && typeof Quilt.licenseApi.getLimits === "function") {
+      try { tierLimits = await Quilt.licenseApi.getLimits(norm.taskType); } catch (e) { tierLimits = freeFallback; }
+    }
+
+    if (tierLimits.maxPerRun != null && (maxActions == null || maxActions > tierLimits.maxPerRun)) {
+      maxActions = tierLimits.maxPerRun;
+      Quilt.debugApi && Quilt.debugApi.log("Tier cap applied: maxPerRun =", maxActions);
+    }
+
     _taskMeta.taskType = (norm.taskType || spec.actionLabel || "").toLowerCase();
     _taskMeta.startedAt = Date.now();
     _taskMeta.maxActions = maxActions;
@@ -141,6 +153,8 @@
     this._limiter = new Quilt.RateLimiter({
       maxPerRun: maxActions,
       maxPerDay: effPerDay,
+      tierMaxPerRun: tierLimits.maxPerRun,
+      tierMaxPerDay: tierLimits.maxPerDay,
     });
 
     var session = Quilt.sessionApi.createRuntime();

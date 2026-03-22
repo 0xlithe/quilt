@@ -89,6 +89,68 @@
   if (el.longPauseMin) el.longPauseMin.value = String(TD.longPauseMinMs);
   if (el.longPauseMax) el.longPauseMax.value = String(TD.longPauseMaxMs);
 
+  /* ── Tier badge + limit hint ── */
+
+  var tierBadge = $("tierBadge");
+  var tierLimitHint = $("tierLimitHint");
+
+  function updateTierBadge(tier) {
+    if (!tierBadge) return;
+    if (tier === "premium") {
+      tierBadge.textContent = "PRO";
+      tierBadge.className = "tier-badge pro";
+    } else {
+      tierBadge.textContent = "FREE";
+      tierBadge.className = "tier-badge free";
+    }
+  }
+
+  function updateTierHint() {
+    if (!tierLimitHint || !Quilt.licenseApi) return;
+    var taskType = getVal(el.taskType) || "follow";
+    Quilt.licenseApi.getLimits(taskType).then(function (limits) {
+      var cap = limits.maxPerRun;
+      var userVal = getInt(el.maxPostAmount);
+      if (cap != null && userVal > cap) {
+        tierLimitHint.textContent = "";
+        var txt = document.createTextNode("Free plan: capped at " + cap + " per run. ");
+        var link = document.createElement("a");
+        link.id = "tierUpgradeLink";
+        link.href = (Quilt.CHECKOUT_URLS && Quilt.CHECKOUT_URLS.monthly) || "#";
+        link.target = "_blank";
+        link.textContent = "Upgrade";
+        tierLimitHint.appendChild(txt);
+        tierLimitHint.appendChild(link);
+        tierLimitHint.style.display = "block";
+      } else if (limits.maxPerDay != null) {
+        tierLimitHint.textContent = "Free plan: " + limits.maxPerDay + "/day limit";
+        tierLimitHint.style.display = "block";
+      } else {
+        tierLimitHint.style.display = "none";
+      }
+    });
+  }
+
+  if (Quilt.licenseApi) {
+    Quilt.licenseApi.getTier().then(function (tier) {
+      updateTierBadge(tier);
+      updateTierHint();
+    });
+  }
+
+  if (el.taskType) el.taskType.addEventListener("change", updateTierHint);
+  if (el.maxPostAmount) el.maxPostAmount.addEventListener("input", updateTierHint);
+
+  chrome.storage.onChanged.addListener(function (changes, area) {
+    if (area !== "local" || !changes[SK.LICENSE]) return;
+    if (Quilt.licenseApi) {
+      Quilt.licenseApi.getTier().then(function (tier) {
+        updateTierBadge(tier);
+        updateTierHint();
+      });
+    }
+  });
+
   var VERB_MAP = { follow: "Following", unfollow: "Unfollowing", like: "Liking", unlike: "Unliking" };
 
   var _timerInterval = null;

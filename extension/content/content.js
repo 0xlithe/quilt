@@ -62,6 +62,10 @@
       try {
         startFn(norm).catch(function (e) {
           Quilt.debugApi && Quilt.debugApi.log("Task threw:", e);
+          var msg = String(e && e.message ? e.message : e);
+          Quilt.storageApi && Quilt.storageApi.set({
+            [Quilt.STORAGE_KEYS.LAST_STATUS]: JSON.stringify({ state: "error", message: msg }),
+          });
         });
         sendResponse({ ok: true });
       } catch (e) {

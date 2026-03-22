@@ -9,6 +9,8 @@ importScripts("../messaging/messaging.js");
   var ALL_CONTENT_SCRIPTS = [
     "messaging/messaging.js",
     "storage/storage.js",
+    "core/tierLimits.js",
+    "core/license.js",
     "content/debug.js",
     "safety/delay.js",
     "safety/humanizer.js",
@@ -67,6 +69,42 @@ importScripts("../messaging/messaging.js");
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== "local" || !changes[SK.SIDEBAR_ON_CLICK]) return;
     applySidebarPref(changes[SK.SIDEBAR_ON_CLICK].newValue !== false);
+  });
+
+  /* ── Device ID generation on startup ── */
+  chrome.storage.local.get([SK.DEVICE_ID], function (r) {
+    if (!r[SK.DEVICE_ID]) {
+      var id = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : "dev_" + Date.now() + "_" + Math.random().toString(36).substr(2, 12);
+      chrome.storage.local.set({ [SK.DEVICE_ID]: id });
+    }
+  });
+
+  /* ── License re-validation on startup (uses chrome.storage directly) ── */
+  var LS_API = "https://api.lemonsqueezy.com/v1/licenses";
+  var REVALIDATE_MS = 24 * 60 * 60 * 1000;
+
+  chrome.storage.local.get([SK.LICENSE], function (r) {
+    var lic = r[SK.LICENSE];
+    if (!lic || !lic.key) return;
+    if (Date.now() - (lic.validatedAt || 0) < REVALIDATE_MS) return;
+    fetch(LS_API + "/validate", {
+      method: "POST",
+      headers: { "Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+      body: "license_key=" + encodeURIComponent(lic.key) + "&instance_id=" + encodeURIComponent(lic.instanceId || ""),
+    }).then(function (resp) { return resp.json(); }).then(function (res) {
+      if (res.valid) {
+        var meta = res.license_key || {};
+        lic.status = meta.status || "active";
+        lic.tier = meta.status === "active" ? "premium" : "free";
+        lic.validatedAt = Date.now();
+      } else {
+        lic.status = "expired";
+        lic.tier = "free";
+      }
+      chrome.storage.local.set({ [SK.LICENSE]: lic });
+    }).catch(function () { /* offline — keep cached tier */ });
   });
 
   function findXTab(callback) {
