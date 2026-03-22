@@ -44,20 +44,29 @@
       }
 
       var norm = Quilt.normalizeTaskStartPayload(p);
+      var startFn;
 
       if (norm.taskType === "like") {
-        Quilt.taskRunner.startLikeTask(norm);
+        startFn = Quilt.taskRunner.startLikeTask.bind(Quilt.taskRunner);
       } else if (norm.taskType === "unlike") {
-        Quilt.taskRunner.startUnlikeTask(norm);
+        startFn = Quilt.taskRunner.startUnlikeTask.bind(Quilt.taskRunner);
       } else if (norm.taskType === "unfollow") {
-        Quilt.taskRunner.startUnfollowTask(norm);
+        startFn = Quilt.taskRunner.startUnfollowTask.bind(Quilt.taskRunner);
       } else if (norm.taskType === "follow") {
-        Quilt.taskRunner.startFollowTask(norm);
+        startFn = Quilt.taskRunner.startFollowTask.bind(Quilt.taskRunner);
       } else {
         sendResponse({ ok: false, error: "bad_task_type" });
         return false;
       }
-      sendResponse({ ok: true });
+
+      try {
+        startFn(norm).catch(function (e) {
+          Quilt.debugApi && Quilt.debugApi.log("Task threw:", e);
+        });
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: String(e && e.message ? e.message : e) });
+      }
       return false;
     }
 

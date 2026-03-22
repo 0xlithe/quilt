@@ -26,12 +26,12 @@
         }
         setTimeout(function () {
           if (window.location.href === currentUrl) {
-            window.location.href = "https://x.com/search?q=" + encodeURIComponent(query) + "&src=typed_query";
+            window.location.href = (window.location.origin || "https://x.com") + "/search?q=" + encodeURIComponent(query) + "&src=typed_query";
           }
         }, 500);
       }, 100);
     } else {
-      window.location.href = "https://x.com/search?q=" + encodeURIComponent(query) + "&src=typed_query";
+      window.location.href = (window.location.origin || "https://x.com") + "/search?q=" + encodeURIComponent(query) + "&src=typed_query";
     }
   }
 

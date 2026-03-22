@@ -58,14 +58,17 @@
     return this;
   };
 
+  var VALID_SLIDING_WINDOWS = { "1d": 1, "1w": 7, "1m": -1 };
+
   QueryBuilder.prototype.calculateSlidingDates = function () {
-    if (!this.filters.slidingWindow) {
+    var sw = this.filters.slidingWindow;
+    if (!sw || !VALID_SLIDING_WINDOWS.hasOwnProperty(sw)) {
       return { sinceDate: this.filters.sinceDate, untilDate: this.filters.untilDate };
     }
     var today = new Date();
     var until = today.toISOString().split("T")[0];
     var ref = new Date(today);
-    switch (this.filters.slidingWindow) {
+    switch (sw) {
       case "1d":
         ref.setDate(ref.getDate() - 1);
         break;
@@ -75,8 +78,6 @@
       case "1m":
         ref.setMonth(ref.getMonth() - 1);
         break;
-      default:
-        return { sinceDate: this.filters.sinceDate, untilDate: this.filters.untilDate };
     }
     return { sinceDate: ref.toISOString().split("T")[0], untilDate: until };
   };

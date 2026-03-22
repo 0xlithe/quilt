@@ -158,14 +158,18 @@ importScripts("../messaging/messaging.js");
           return;
         }
         function forwardToContent() {
-          chrome.tabs.sendMessage(tabId, msg, function (res) {
-            var le = chrome.runtime.lastError;
-            if (le) {
-              sendResponse({ ok: false, error: le.message });
-              return;
-            }
-            sendResponse(res || { ok: true });
-          });
+          try {
+            chrome.tabs.sendMessage(tabId, msg, function (res) {
+              var le = chrome.runtime.lastError;
+              if (le) {
+                sendResponse({ ok: false, error: le.message });
+                return;
+              }
+              sendResponse(res || { ok: true });
+            });
+          } catch (e) {
+            sendResponse({ ok: false, error: "tab_send_failed" });
+          }
         }
         if (msg.type === T.TASK_START) {
           injectAllForTask(tabId, function (injectErr) {

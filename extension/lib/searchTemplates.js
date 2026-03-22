@@ -67,15 +67,17 @@
     },
   ];
 
+  var _initPromise = null;
   Quilt.initSearchTemplates = function () {
-    return Quilt.storageApi.get([SK.SEARCH_TEMPLATES_INIT]).then(function (r) {
+    if (_initPromise) return _initPromise;
+    _initPromise = Quilt.storageApi.get([SK.SEARCH_TEMPLATES_INIT]).then(function (r) {
       if (r[SK.SEARCH_TEMPLATES_INIT]) return;
       var QB = Quilt.QueryBuilder;
       var searches = DEFAULT_TEMPLATES.map(function (t) {
         var builder = new QB();
         builder.fromFilters(t.filters);
         return {
-          id: "template_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9),
+          id: "template_" + (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : Date.now() + "_" + Math.random().toString(36).substr(2, 9)),
           name: t.name,
           query: builder.build(),
           filters: t.filters,
@@ -96,5 +98,6 @@
         });
       });
     });
+    return _initPromise;
   };
 })();

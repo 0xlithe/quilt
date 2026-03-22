@@ -98,6 +98,9 @@
   function getVal(mdEl) { return mdEl && mdEl.value != null ? String(mdEl.value) : ""; }
   function getInt(mdEl) { return parseInt(getVal(mdEl), 10); }
 
+  var SAFE_COLOR_RE = /^#[0-9a-fA-F]{3,8}$|^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$|^hsl\(\s*\d{1,3}\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*\)$/;
+  function safeColor(c) { return typeof c === "string" && SAFE_COLOR_RE.test(c) ? c : "#6b7280"; }
+
   function formatElapsed(ms) {
     var s = Math.floor(ms / 1000);
     var m = Math.floor(s / 60);
@@ -417,7 +420,7 @@
       chrome.scripting.executeScript({
         target: { tabId: tabs[0].id },
         func: function (query) {
-          window.location.href = "https://x.com/search?q=" + encodeURIComponent(query) + "&src=typed_query";
+          window.location.href = (window.location.origin || "https://x.com") + "/search?q=" + encodeURIComponent(query) + "&src=typed_query";
         },
         args: [q],
       });
@@ -521,7 +524,7 @@
         card.className = "search-card";
         card.setAttribute("draggable", "true");
         card.setAttribute("data-id", s.id);
-        card.style.borderLeftColor = s.color || "#6b7280";
+        card.style.borderLeftColor = safeColor(s.color);
         card.style.animation = "stagger 200ms ease-out " + (idx * 30) + "ms both";
 
         var nameEl = document.createElement("div");
@@ -538,7 +541,7 @@
         if (s.filters && s.filters.slidingWindow && WINDOW_LABELS[s.filters.slidingWindow]) {
           var badge = document.createElement("span");
           badge.className = "search-badge";
-          badge.style.background = s.color || "#6b7280";
+          badge.style.background = safeColor(s.color);
           badge.textContent = WINDOW_LABELS[s.filters.slidingWindow];
           metaEl.appendChild(badge);
         }
@@ -591,14 +594,14 @@
             chrome.scripting.executeScript({
               target: { tabId: tabs[0].id },
               func: function (q) {
-                window.location.href = "https://x.com/search?q=" + encodeURIComponent(q) + "&src=typed_query";
-              },
-              args: [query],
-            });
+              window.location.href = (window.location.origin || "https://x.com") + "/search?q=" + encodeURIComponent(q) + "&src=typed_query";
+            },
+            args: [query],
           });
         });
+      });
 
-        /* Drag-and-drop */
+      /* Drag-and-drop */
         card.addEventListener("dragstart", function (e) {
           card.classList.add("dragging");
           e.dataTransfer.setData("text/plain", s.id);
@@ -626,7 +629,11 @@
     });
   }
 
-  sq.filterInput.addEventListener("input", renderSavedSearches);
+  var _filterTimer = null;
+  sq.filterInput.addEventListener("input", function () {
+    if (_filterTimer) clearTimeout(_filterTimer);
+    _filterTimer = setTimeout(renderSavedSearches, 200);
+  });
 
   /* ═══════════════════════════════════════════
      SEARCH TAB — CATEGORIES

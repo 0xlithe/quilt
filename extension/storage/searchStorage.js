@@ -5,6 +5,9 @@
   var SK = Quilt.STORAGE_KEYS;
 
   function generateId() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return "search_" + crypto.randomUUID();
+    }
     return "search_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
   }
 
@@ -68,10 +71,17 @@
     reorderSearches: function (orderedIds) {
       return this.getSavedSearches().then(function (searches) {
         var map = {};
+        var seen = {};
         for (var i = 0; i < searches.length; i++) map[searches[i].id] = searches[i];
         var reordered = [];
         for (var j = 0; j < orderedIds.length; j++) {
-          if (map[orderedIds[j]]) reordered.push(map[orderedIds[j]]);
+          if (map[orderedIds[j]]) {
+            reordered.push(map[orderedIds[j]]);
+            seen[orderedIds[j]] = true;
+          }
+        }
+        for (var k = 0; k < searches.length; k++) {
+          if (!seen[searches[k].id]) reordered.push(searches[k]);
         }
         return Quilt.storageApi.set({ [SK.SAVED_SEARCHES]: reordered }).then(function () {
           return reordered;

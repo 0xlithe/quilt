@@ -292,9 +292,11 @@
       };
     }
 
+    var API_ORIGIN = (typeof location !== "undefined" && location.origin) || "https://x.com";
+
     function buildLikeRequestUrl(queryId) {
       var qid = queryId || FAVORITE_QUERY_ID;
-      return "https://x.com/i/api/graphql/" + qid + "/FavoriteTweet";
+      return API_ORIGIN + "/i/api/graphql/" + qid + "/FavoriteTweet";
     }
 
     function buildLikeRequestBody(tweetId, queryId) {
@@ -335,7 +337,7 @@
 
     function buildUnlikeRequestUrl(queryId) {
       var qid = queryId || UNFAVORITE_QUERY_ID;
-      return "https://x.com/i/api/graphql/" + qid + "/UnfavoriteTweet";
+      return API_ORIGIN + "/i/api/graphql/" + qid + "/UnfavoriteTweet";
     }
 
     function buildUnlikeRequestBody(tweetId, queryId) {

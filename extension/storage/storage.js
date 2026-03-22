@@ -123,13 +123,19 @@
      * First ~3 days: cap 20/day; next ~4 days: cap 80/day; then requested.
      */
     getWarmupAdjustedMaxPerDay: function (requestedMax) {
+      var WARMUP_PHASE_1_DAYS = 3;
+      var WARMUP_PHASE_1_CAP  = 20;
+      var WARMUP_PHASE_2_DAYS = 7;
+      var WARMUP_PHASE_2_CAP  = 80;
+      var MS_PER_DAY = 86400000;
+
       if (typeof requestedMax !== "number" || !Number.isFinite(requestedMax)) {
         return Promise.resolve(requestedMax);
       }
       return Quilt.storageApi.ensureFirstSeenMs().then(function (first) {
-        var days = Math.floor((Date.now() - first) / 86400000);
-        if (days < 3) return Math.min(requestedMax, 20);
-        if (days < 7) return Math.min(requestedMax, 80);
+        var days = Math.floor((Date.now() - first) / MS_PER_DAY);
+        if (days < WARMUP_PHASE_1_DAYS) return Math.min(requestedMax, WARMUP_PHASE_1_CAP);
+        if (days < WARMUP_PHASE_2_DAYS) return Math.min(requestedMax, WARMUP_PHASE_2_CAP);
         return requestedMax;
       });
     },

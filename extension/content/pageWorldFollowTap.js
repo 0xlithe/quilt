@@ -63,7 +63,7 @@
           action: payload.action || null,
           url: payload.url,
         },
-        window.location.origin || "*"
+        window.location.origin
       );
     } catch (e) {
       /* ignore */
@@ -78,7 +78,7 @@
           marker: marker,
           ok: !!ok,
         },
-        window.location.origin || "*"
+        window.location.origin
       );
     } catch (e) {
       /* ignore */
@@ -98,7 +98,7 @@
           url: payload && payload.url,
           error: payload && payload.error,
         },
-        window.location.origin || "*"
+        window.location.origin
       );
     } catch (e) {
       /* ignore */
@@ -115,10 +115,12 @@
     return "";
   }
 
+  var API_ORIGIN = (typeof location !== "undefined" && location.origin) || "https://x.com";
+
   function getFriendshipRequestUrl(action) {
     return action === "unfollow"
-      ? "https://x.com/i/api/1.1/friendships/destroy.json"
-      : "https://x.com/i/api/1.1/friendships/create.json";
+      ? API_ORIGIN + "/i/api/1.1/friendships/destroy.json"
+      : API_ORIGIN + "/i/api/1.1/friendships/create.json";
   }
 
   function rememberApiHeaders(headers) {
@@ -238,7 +240,7 @@
           url: payload && payload.url,
           error: payload && payload.error,
         },
-        window.location.origin || "*"
+        window.location.origin
       );
     } catch (e) {
       /* ignore */
@@ -319,7 +321,7 @@
           url: payload && payload.url,
           error: payload && payload.error,
         },
-        window.location.origin || "*"
+        window.location.origin
       );
     } catch (e) {
       /* ignore */
@@ -576,9 +578,19 @@
       if (/\/i\/api\//i.test(String(rawUrl || ""))) {
         rememberApiHeaders(getFetchHeadersSnapshot(input, init));
         var fqid = shared.extractFavoriteQueryId(rawUrl);
-        if (fqid) capturedFavoriteQueryId = fqid;
+        if (fqid) {
+          if (capturedFavoriteQueryId && capturedFavoriteQueryId !== fqid) {
+            console.warn("[quilt] FavoriteTweet queryId changed:", capturedFavoriteQueryId, "→", fqid);
+          }
+          capturedFavoriteQueryId = fqid;
+        }
         var ufqid = shared.extractUnfavoriteQueryId(rawUrl);
-        if (ufqid) capturedUnfavoriteQueryId = ufqid;
+        if (ufqid) {
+          if (capturedUnfavoriteQueryId && capturedUnfavoriteQueryId !== ufqid) {
+            console.warn("[quilt] UnfavoriteTweet queryId changed:", capturedUnfavoriteQueryId, "→", ufqid);
+          }
+          capturedUnfavoriteQueryId = ufqid;
+        }
       }
       var kind = shared.classifyFriendshipRequestKind(rawUrl, location.href);
       if (!kind) {

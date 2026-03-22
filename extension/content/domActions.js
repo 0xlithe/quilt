@@ -494,9 +494,13 @@
     return out;
   }
 
+  function getTimelineRoot() {
+    return document.querySelector('[data-testid="primaryColumn"]') || document.querySelector('main[role="main"]') || document.body;
+  }
+
   function getLikeButtons(processedSet) {
     var set = processedSet instanceof Set ? processedSet : new Set();
-    var nodes = toArray(document.querySelectorAll('[data-testid="like"]'));
+    var nodes = toArray(getTimelineRoot().querySelectorAll('[data-testid="like"]'));
     var out = [];
     Quilt.debugApi.log("getLikeButtons: raw count", nodes.length);
     for (var j = 0; j < nodes.length; j++) {
@@ -515,7 +519,7 @@
 
   function getUnlikeButtons(processedSet) {
     var set = processedSet instanceof Set ? processedSet : new Set();
-    var nodes = toArray(document.querySelectorAll('[data-testid="unlike"]'));
+    var nodes = toArray(getTimelineRoot().querySelectorAll('[data-testid="unlike"]'));
     var out = [];
     Quilt.debugApi.log("getUnlikeButtons: raw count", nodes.length);
     for (var j = 0; j < nodes.length; j++) {
@@ -659,6 +663,10 @@
       ? _followWireShared.createFollowWireTracker()
       : null;
 
+  // The nonce is stored on the documentElement so both isolated and MAIN worlds can read it.
+  // It prevents other extensions from forging quilt bridge messages but is visible to any
+  // same-page script that inspects the DOM. Combined with origin checks this is acceptable
+  // for the threat model (only x.com page scripts could read it).
   (function initBridgeNonce() {
     if (!_followWireShared || typeof _followWireShared.setBridgeNonce !== "function") return;
     var existing = document.documentElement.getAttribute("data-quilt-nonce");
@@ -681,7 +689,7 @@
           token: token,
           timeoutMs: timeoutMs,
         }),
-        window.location.origin || "*"
+        window.location.origin
       );
       return true;
     } catch (e) {
@@ -689,11 +697,16 @@
     }
   }
 
+  function isQuiltOrigin(o) {
+    return o === "https://x.com" || o === "https://twitter.com";
+  }
+
   function installPageWorldFollowMessageListener() {
     if (_pageWorldFollowMsgInstalled) return;
     _pageWorldFollowMsgInstalled = true;
     window.addEventListener("message", function (ev) {
       if (ev.source !== window) return;
+      if (!isQuiltOrigin(ev.origin)) return;
       var d = ev.data;
       if (!d || typeof d !== "object") return;
       if (d.quiltFollowClick === 1) return;
@@ -731,7 +744,7 @@
       }
 
       function onMessage(ev) {
-        if (ev.source !== window) return;
+        if (ev.source !== window || !isQuiltOrigin(ev.origin)) return;
         var d = ev.data;
         if (!d || typeof d !== "object") return;
         if (d.quiltFriendshipRequest !== 1) return;
@@ -751,7 +764,7 @@
             action: action,
             target: target,
           }),
-          window.location.origin || "*"
+          window.location.origin
         );
       } catch (e) {
         finish({
@@ -858,7 +871,7 @@
       }
 
       function onMessage(ev) {
-        if (ev.source !== window) return;
+        if (ev.source !== window || !isQuiltOrigin(ev.origin)) return;
         var d = ev.data;
         if (!d || typeof d !== "object") return;
         if (d.quiltLikeRequest !== 1) return;
@@ -877,7 +890,7 @@
             requestId: requestId,
             tweetId: String(tweetId),
           }),
-          window.location.origin || "*"
+          window.location.origin
         );
       } catch (e) {
         finish({
@@ -963,7 +976,7 @@
       }
 
       function onMessage(ev) {
-        if (ev.source !== window) return;
+        if (ev.source !== window || !isQuiltOrigin(ev.origin)) return;
         var d = ev.data;
         if (!d || typeof d !== "object") return;
         if (d.quiltUnlikeRequest !== 1) return;
@@ -982,7 +995,7 @@
             requestId: requestId,
             tweetId: String(tweetId),
           }),
-          window.location.origin || "*"
+          window.location.origin
         );
       } catch (e) {
         finish({
@@ -1059,7 +1072,7 @@
       }
 
       function onMessage(ev) {
-        if (ev.source !== window) return;
+        if (ev.source !== window || !isQuiltOrigin(ev.origin)) return;
         var d = ev.data;
         if (!d || typeof d !== "object") return;
         if (d.quiltFollowClick !== 1) return;
@@ -1081,7 +1094,7 @@
         _followWireShared.makeBridgePayload(_bridgeMessages.FOLLOW_CLICK, {
           marker: marker,
         }),
-        window.location.origin || "*"
+        window.location.origin
       );
       return true;
     } catch (e) {
@@ -1392,7 +1405,14 @@
    * x.com usually scrolls the primary column's inner overflow div, not the
    * window — window.scrollBy loads nothing and triggers empty-target loops.
    */
+  var _cachedScroller = null;
+  var _cachedScrollerAt = 0;
+  var SCROLLER_CACHE_MS = 3000;
+
   function getFeedScrollElement() {
+    if (_cachedScroller && document.contains(_cachedScroller) && Date.now() - _cachedScrollerAt < SCROLLER_CACHE_MS) {
+      return _cachedScroller;
+    }
     var col = document.querySelector('[data-testid="primaryColumn"]');
     var seed =
       (isProfileFollowersOrFollowingPath()
@@ -1441,6 +1461,8 @@
         if (bestExcess > 200) break;
       }
     }
+    _cachedScroller = best;
+    _cachedScrollerAt = Date.now();
     return best;
   }
 
@@ -1642,6 +1664,12 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
+  var HEART_SCROLL_SETTLE_MS = 350;
+  var HEART_SPRING_HOLD_MS = 700;
+  var HEART_FADEOUT_MS = 350;
+  var HEART_PULSE_MS = 600;
+  var HEART_SAFETY_MS = 2500;
+
   function playHeartOverlay(likeButton) {
     ensureSparkleKeyframes();
 
@@ -1650,92 +1678,111 @@
       (article || likeButton).scrollIntoView({ behavior: "smooth", block: "center" });
     } catch (e) { /* ignore */ }
 
-    var SCROLL_SETTLE_MS = 350;
-
     return new Promise(function (resolve) {
-      setTimeout(function () {
-        var rect = likeButton.getBoundingClientRect();
-        var size = Math.max(rect.width, rect.height, 36) * 1.6;
+      var container = null;
+      var resolved = false;
+      var timers = [];
 
-        var container = document.createElement("div");
-        container.style.cssText =
-          "position:fixed;z-index:2147483647;pointer-events:none;" +
-          "left:" + (rect.left + rect.width / 2 - size / 2) + "px;" +
-          "top:" + (rect.top + rect.height / 2 - size / 2) + "px;" +
-          "width:" + size + "px;height:" + size + "px;";
-
-        var ns = "http://www.w3.org/2000/svg";
-
-        var svg = document.createElementNS(ns, "svg");
-        svg.setAttribute("viewBox", "0 0 24 24");
-        svg.setAttribute("width", String(size));
-        svg.setAttribute("height", String(size));
-        svg.style.cssText =
-          "display:block;animation:quiltHeartSpring 0.45s cubic-bezier(.34,1.56,.64,1) forwards;";
-
-        var path = document.createElementNS(ns, "path");
-        path.setAttribute("d", HEART_SVG_PATH);
-        path.setAttribute("fill", "#f91880");
-        path.setAttribute("stroke", "none");
-        svg.appendChild(path);
-        container.appendChild(svg);
-
-        var sparkleCount = 6;
-        var sparkleRadius = size * 0.7;
-        for (var i = 0; i < sparkleCount; i++) {
-          var angle = (Math.PI * 2 * i) / sparkleCount - Math.PI / 2;
-          var dx = Math.cos(angle) * sparkleRadius;
-          var dy = Math.sin(angle) * sparkleRadius;
-          var dot = document.createElement("div");
-          var dotSize = 4 + Math.random() * 3;
-          var hue = 330 + Math.random() * 40;
-          dot.style.cssText =
-            "position:absolute;border-radius:50%;" +
-            "width:" + dotSize + "px;height:" + dotSize + "px;" +
-            "background:hsl(" + hue + ",90%,60%);" +
-            "left:" + (size / 2 - dotSize / 2) + "px;" +
-            "top:" + (size / 2 - dotSize / 2) + "px;" +
-            "animation:quiltSparkle 0.5s " + (0.1 + i * 0.04) + "s ease-out forwards;" +
-            "transform:translate(" + dx + "px," + dy + "px) scale(1);";
-          container.appendChild(dot);
+      function done() {
+        if (resolved) return;
+        resolved = true;
+        timers.forEach(function (t) { clearTimeout(t); });
+        try { if (container && container.parentNode) container.remove(); } catch (e) { /* ignore */ }
+        if (article) {
+          article.style.removeProperty("transition");
+          article.style.removeProperty("opacity");
         }
+        resolve();
+      }
 
-        var glow = document.createElement("div");
-        var glowSize = size * 1.3;
-        glow.style.cssText =
-          "position:absolute;border-radius:50%;" +
-          "width:" + glowSize + "px;height:" + glowSize + "px;" +
-          "left:" + (size / 2 - glowSize / 2) + "px;" +
-          "top:" + (size / 2 - glowSize / 2) + "px;" +
-          "background:radial-gradient(circle,rgba(249,24,128,0.25) 0%,transparent 70%);" +
-          "animation:quiltSparkleGlow 0.5s ease-out forwards;pointer-events:none;";
-        container.appendChild(glow);
+      timers.push(setTimeout(done, HEART_SAFETY_MS));
 
-        document.body.appendChild(container);
+      timers.push(setTimeout(function () {
+        try {
+          var rect = likeButton.getBoundingClientRect();
+          var size = Math.max(rect.width, rect.height, 36) * 1.6;
 
-        setTimeout(function () {
-          svg.style.animation = "quiltHeartFadeOut 0.3s ease-in forwards";
-          setTimeout(function () {
-            try { container.remove(); } catch (e2) { /* ignore */ }
-            if (article) {
-              try {
-                var btnSvg = likeButton.querySelector("svg");
-                if (btnSvg) btnSvg.style.setProperty("color", "#f91880", "important");
-                article.style.transition = "opacity 0.3s ease-out";
-                article.style.opacity = "0.45";
-                setTimeout(function () {
-                  article.style.opacity = "1";
-                  resolve();
-                }, 600);
-              } catch (e3) {
-                resolve();
-              }
-            } else {
-              resolve();
-            }
-          }, 350);
-        }, 700);
-      }, SCROLL_SETTLE_MS);
+          container = document.createElement("div");
+          container.style.cssText =
+            "position:fixed;z-index:2147483647;pointer-events:none;" +
+            "left:" + (rect.left + rect.width / 2 - size / 2) + "px;" +
+            "top:" + (rect.top + rect.height / 2 - size / 2) + "px;" +
+            "width:" + size + "px;height:" + size + "px;";
+
+          var ns = "http://www.w3.org/2000/svg";
+          var svg = document.createElementNS(ns, "svg");
+          svg.setAttribute("viewBox", "0 0 24 24");
+          svg.setAttribute("width", String(size));
+          svg.setAttribute("height", String(size));
+          svg.style.cssText =
+            "display:block;animation:quiltHeartSpring 0.45s cubic-bezier(.34,1.56,.64,1) forwards;";
+
+          var path = document.createElementNS(ns, "path");
+          path.setAttribute("d", HEART_SVG_PATH);
+          path.setAttribute("fill", "#f91880");
+          path.setAttribute("stroke", "none");
+          svg.appendChild(path);
+          container.appendChild(svg);
+
+          var sparkleCount = 6;
+          var sparkleRadius = size * 0.7;
+          for (var i = 0; i < sparkleCount; i++) {
+            var angle = (Math.PI * 2 * i) / sparkleCount - Math.PI / 2;
+            var dx = Math.cos(angle) * sparkleRadius;
+            var dy = Math.sin(angle) * sparkleRadius;
+            var dot = document.createElement("div");
+            var dotSize = 4 + Math.random() * 3;
+            var hue = 330 + Math.random() * 40;
+            dot.style.cssText =
+              "position:absolute;border-radius:50%;" +
+              "width:" + dotSize + "px;height:" + dotSize + "px;" +
+              "background:hsl(" + hue + ",90%,60%);" +
+              "left:" + (size / 2 - dotSize / 2) + "px;" +
+              "top:" + (size / 2 - dotSize / 2) + "px;" +
+              "animation:quiltSparkle 0.5s " + (0.1 + i * 0.04) + "s ease-out forwards;" +
+              "transform:translate(" + dx + "px," + dy + "px) scale(1);";
+            container.appendChild(dot);
+          }
+
+          var glow = document.createElement("div");
+          var glowSize = size * 1.3;
+          glow.style.cssText =
+            "position:absolute;border-radius:50%;" +
+            "width:" + glowSize + "px;height:" + glowSize + "px;" +
+            "left:" + (size / 2 - glowSize / 2) + "px;" +
+            "top:" + (size / 2 - glowSize / 2) + "px;" +
+            "background:radial-gradient(circle,rgba(249,24,128,0.25) 0%,transparent 70%);" +
+            "animation:quiltSparkleGlow 0.5s ease-out forwards;pointer-events:none;";
+          container.appendChild(glow);
+
+          document.body.appendChild(container);
+
+          timers.push(setTimeout(function () {
+            if (resolved) return;
+            svg.style.animation = "quiltHeartFadeOut 0.3s ease-in forwards";
+            timers.push(setTimeout(function () {
+              if (resolved) return;
+              try { if (container.parentNode) container.remove(); } catch (e2) { /* ignore */ }
+              container = null;
+              if (article) {
+                try {
+                  var btnSvg = likeButton.querySelector("svg");
+                  if (btnSvg) btnSvg.style.setProperty("color", "#f91880", "important");
+                  article.style.transition = "opacity 0.3s ease-out";
+                  article.style.opacity = "0.45";
+                  timers.push(setTimeout(function () {
+                    if (article) {
+                      article.style.removeProperty("transition");
+                      article.style.removeProperty("opacity");
+                    }
+                    done();
+                  }, HEART_PULSE_MS));
+                } catch (e3) { done(); }
+              } else { done(); }
+            }, HEART_FADEOUT_MS));
+          }, HEART_SPRING_HOLD_MS));
+        } catch (e4) { done(); }
+      }, HEART_SCROLL_SETTLE_MS));
     });
   }
 

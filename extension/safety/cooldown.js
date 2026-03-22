@@ -5,14 +5,20 @@
 
   var KEY_LEVEL = "quilt_cooldown_level";
   var KEY_UNTIL = "quilt_cooldown_until_ms";
+  var BASE_COOLDOWN_MS = 60000;
+  var MAX_COOLDOWN_MS = 15 * 60 * 1000;
+  var RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000;
+  var SUCCESS_STREAK_RESET = 10;
+  var POLL_INTERVAL_MS = 5000;
+  var EMIT_INTERVAL_MS = 30000;
 
   function CooldownApi() {
     this._successStreak = 0;
   }
 
   CooldownApi.prototype._durationMs = function (level) {
-    var base = 60000 * Math.pow(2, Math.max(0, level));
-    return Math.min(base, 15 * 60 * 1000);
+    var base = BASE_COOLDOWN_MS * Math.pow(2, Math.max(0, level));
+    return Math.min(base, MAX_COOLDOWN_MS);
   };
 
   CooldownApi.prototype.isActive = function () {
@@ -60,11 +66,11 @@
         var now = Date.now();
         if (now >= u) return;
         var remaining = u - now;
-        if (typeof onWaiting === "function" && now - lastEmit >= 30000) {
+        if (typeof onWaiting === "function" && now - lastEmit >= EMIT_INTERVAL_MS) {
           lastEmit = now;
           onWaiting(remaining);
         }
-        var slice = Math.min(5000, remaining);
+        var slice = Math.min(POLL_INTERVAL_MS, remaining);
         await new Promise(function (resolve) {
           wakeResolve = resolve;
           setTimeout(resolve, slice);
@@ -98,7 +104,7 @@
   /** Call after a verified successful engagement to decay strike level over time. */
   CooldownApi.prototype.noteSuccessfulAction = async function () {
     this._successStreak += 1;
-    if (this._successStreak >= 10) {
+    if (this._successStreak >= SUCCESS_STREAK_RESET) {
       this._successStreak = 0;
       await Quilt.storageApi.set({ [KEY_LEVEL]: 0 });
       Quilt.debugApi.log("Cooldown level reset after success streak");
@@ -106,7 +112,7 @@
   };
 
   CooldownApi.prototype.enterRateLimitCooldown = async function (reason) {
-    var ms = 5 * 60 * 1000;
+    var ms = RATE_LIMIT_COOLDOWN_MS;
     var until = Date.now() + ms;
     await Quilt.storageApi.set({
       [KEY_UNTIL]: until,

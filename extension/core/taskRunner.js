@@ -93,7 +93,8 @@
     emitStatus("running", "Task resumed");
   };
 
-  TaskRunner.prototype._isCancelled = function () {
+  TaskRunner.prototype._isCancelled = function (epoch) {
+    if (typeof epoch === "number" && this._epoch !== epoch) return true;
     return this._cancelled;
   };
 
@@ -144,7 +145,8 @@
 
     var session = Quilt.sessionApi.createRuntime();
     var failStreak = 0;
-    var cancel = this._isCancelled.bind(this);
+    var self = this;
+    var cancel = function () { return self._isCancelled(taskEpoch); };
 
     emitStatus("running", spec.actionLabel + " task started", {
       maxActions: maxActions,
@@ -160,7 +162,7 @@
           ? spec.maxEmptyIterations
           : 20;
 
-      while (!this._cancelled && done < maxActions) {
+      while (!this._cancelled && this._epoch === taskEpoch && done < maxActions) {
         await Quilt.cooldownApi.waitUntilClear(cancel, function (remainingMs) {
           var mins = Math.ceil(remainingMs / 60000);
           emitStatus(
@@ -387,7 +389,7 @@
         );
 
         if (typeof spec.updateProcessed === "function") {
-          spec.updateProcessed(processed, id, btn);
+          await spec.updateProcessed(processed, id, btn);
         } else if (id) {
           processed.add(id);
         }
@@ -493,7 +495,9 @@
         await actionDelay(delayMinMs, delayMaxMs);
       }
 
-      if (this._cancelled) {
+      if (this._epoch !== taskEpoch) {
+        /* superseded by a newer task — exit silently */
+      } else if (this._cancelled) {
         emitStatus("cancelled", "Task cancelled", { completed: done });
       } else if (done >= maxActions) {
         emitStatus("completed", "Reached max post amount", { completed: done });
@@ -634,7 +638,7 @@
       },
       updateProcessed: function (set, id) {
         if (id) set.add(id);
-        Quilt.storageApi.getFollowedIdSet().then(function (fSet) {
+        return Quilt.storageApi.getFollowedIdSet().then(function (fSet) {
           if (fSet.has(id)) {
             fSet.delete(id);
             return Quilt.storageApi.saveFollowedIdSet(fSet);
@@ -690,7 +694,7 @@
       },
       updateProcessed: function (set, id) {
         if (id) set.add(id);
-        Quilt.storageApi.getLikedTweetIdSet().then(function (likedSet) {
+        return Quilt.storageApi.getLikedTweetIdSet().then(function (likedSet) {
           if (likedSet.has(id)) {
             likedSet.delete(id);
             return Quilt.storageApi.saveLikedTweetIdSet(likedSet);
