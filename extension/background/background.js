@@ -6,6 +6,59 @@ importScripts("../messaging/messaging.js");
   var Quilt = self.Quilt;
   var T = Quilt.MESSAGE_TYPES;
 
+  var ALL_CONTENT_SCRIPTS = [
+    "messaging/messaging.js",
+    "storage/storage.js",
+    "content/debug.js",
+    "safety/delay.js",
+    "safety/humanizer.js",
+    "safety/sessionManager.js",
+    "safety/cooldown.js",
+    "safety/rateLimiter.js",
+    "core/scheduler.js",
+    "core/taskStatusShared.js",
+    "content/followWireShared.js",
+    "content/domActions.js",
+    "core/taskRunner.js",
+    "content/badges.js",
+    "content/content.js",
+  ];
+
+  var MAIN_WORLD_SCRIPTS = [
+    "content/followWireShared.js",
+    "content/pageWorldFollowTap.js",
+  ];
+
+  var _injectedTabs = new Set();
+  var SIDEBAR_KEY = "quilt_sidebar_on_click";
+
+  chrome.tabs.onRemoved.addListener(function (tabId) {
+    _injectedTabs.delete(tabId);
+  });
+
+  function applySidebarPref(enabled) {
+    try {
+      if (enabled) {
+        chrome.action.setPopup({ popup: "" });
+        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+      } else {
+        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+        chrome.action.setPopup({ popup: "ui/popup.html" });
+      }
+    } catch (e) {
+      /* sidePanel API unavailable */
+    }
+  }
+
+  chrome.storage.local.get([SIDEBAR_KEY], function (r) {
+    applySidebarPref(r[SIDEBAR_KEY] !== false);
+  });
+
+  chrome.storage.onChanged.addListener(function (changes, area) {
+    if (area !== "local" || !changes[SIDEBAR_KEY]) return;
+    applySidebarPref(changes[SIDEBAR_KEY].newValue !== false);
+  });
+
   function findXTab(callback) {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       var err = chrome.runtime.lastError;
@@ -36,34 +89,50 @@ importScripts("../messaging/messaging.js");
     });
   }
 
-  /**
-   * Friendship tasks need MAIN-world hooks for create/destroy requests; inject only
-   * on Start so normal browsing never replaces fetch/XHR.
-   */
-  function injectMainFollowWireIfFollow(msg, tabId, done) {
-    if (msg.type !== T.TASK_START) {
-      done(null);
-      return;
-    }
-    var p = msg.payload || {};
-    var mode = String(p.taskType != null ? p.taskType : p.task != null ? p.task : "follow")
-      .trim()
-      .toLowerCase();
-    if (mode !== "follow" && mode !== "unfollow" && mode !== "like") {
+  function injectTaskScripts(tabId, done) {
+    if (_injectedTabs.has(tabId)) {
       done(null);
       return;
     }
     chrome.scripting.executeScript(
       {
         target: { tabId: tabId, allFrames: false },
-        world: "MAIN",
-        files: ["content/followWireShared.js", "content/pageWorldFollowTap.js"],
+        files: ALL_CONTENT_SCRIPTS,
       },
       function () {
         var err = chrome.runtime.lastError;
-        done(err ? err.message || "follow_wire_inject_failed" : null);
+        if (err) {
+          done(err.message || "task_script_inject_failed");
+          return;
+        }
+        _injectedTabs.add(tabId);
+        done(null);
       }
     );
+  }
+
+  function injectMainWorldScripts(tabId, done) {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId: tabId, allFrames: false },
+        world: "MAIN",
+        files: MAIN_WORLD_SCRIPTS,
+      },
+      function () {
+        var err = chrome.runtime.lastError;
+        done(err ? err.message || "main_world_inject_failed" : null);
+      }
+    );
+  }
+
+  function injectAllForTask(tabId, done) {
+    injectTaskScripts(tabId, function (err) {
+      if (err) {
+        done(err);
+        return;
+      }
+      injectMainWorldScripts(tabId, done);
+    });
   }
 
   chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
@@ -89,7 +158,7 @@ importScripts("../messaging/messaging.js");
           });
         }
         if (msg.type === T.TASK_START) {
-          injectMainFollowWireIfFollow(msg, tabId, function (injectErr) {
+          injectAllForTask(tabId, function (injectErr) {
             if (injectErr) {
               sendResponse({ ok: false, error: injectErr });
               return;
@@ -104,14 +173,18 @@ importScripts("../messaging/messaging.js");
     }
 
     if (msg.type === T.TASK_STATUS) {
+      var p = msg.payload || {};
+      var statusObj = {
+        state: p.state,
+        message: p.message,
+        time: Date.now(),
+      };
+      if (p.taskType) statusObj.taskType = p.taskType;
+      if (p.startedAt) statusObj.startedAt = p.startedAt;
+      if (typeof p.completed === "number") statusObj.completed = p.completed;
+      if (typeof p.maxActions === "number") statusObj.maxActions = p.maxActions;
       chrome.storage.local.set(
-        {
-          quilt_last_status: {
-            state: msg.payload && msg.payload.state,
-            message: msg.payload && msg.payload.message,
-            time: Date.now(),
-          },
-        },
+        { quilt_last_status: statusObj },
         function () {
           void chrome.runtime.lastError;
         }

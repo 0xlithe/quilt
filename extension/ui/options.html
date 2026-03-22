@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>quilt Options</title>
+    <link rel="stylesheet" href="popup-bundle.css" />
+    <script type="module" src="popup-bundle.js"></script>
+    <style>
+      :root {
+        --md-sys-color-primary: #e7e9ea;
+        --md-sys-color-on-primary: #0a0a0c;
+        --md-sys-color-surface: #0a0a0c;
+        --md-sys-color-on-surface: #e7e9ea;
+        --md-sys-color-on-surface-variant: #8b9198;
+        --md-sys-color-outline: #2f3336;
+        --md-ref-typeface-plain: 'Manrope', system-ui, sans-serif;
+        --md-ref-typeface-brand: 'Manrope', system-ui, sans-serif;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'Manrope', system-ui, sans-serif;
+        min-width: 260px;
+        max-width: 300px;
+        color: #e7e9ea;
+        background: #0a0a0c;
+        padding: 20px;
+      }
+
+      h2 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #e7e9ea;
+        margin-bottom: 16px;
+      }
+
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .check-row label {
+        font-size: 12px;
+        color: #8b9198;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      md-checkbox {
+        --md-checkbox-outline-color: #2f3336;
+        --md-checkbox-hover-outline-color: #4a4e54;
+        --md-checkbox-selected-container-color: #e7e9ea;
+        --md-checkbox-selected-icon-color: #0a0a0c;
+        --md-focus-ring-color: transparent;
+        --md-checkbox-state-layer-size: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>quilt settings</h2>
+    <div class="check-row">
+      <md-checkbox id="sidebar" touch-target="wrapper" checked></md-checkbox>
+      <label for="sidebar">Open sidebar on icon click</label>
+    </div>
+    <div class="check-row" style="margin-top: 12px;">
+      <md-checkbox id="debug" touch-target="wrapper"></md-checkbox>
+      <label for="debug">Enable debug logging</label>
+    </div>
+    <script src="../messaging/messaging.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

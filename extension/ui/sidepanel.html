@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#0a0a0c" />
     <title>quilt</title>
     <link rel="icon" type="image/png" href="../assets/favicon.png" />
-    <link rel="stylesheet" href="popup-bundle.css" />
-    <script type="module" src="popup-bundle.js"></script>
+    <link rel="stylesheet" href="sidepanel-bundle.css" />
+    <script type="module" src="sidepanel-bundle.js"></script>
     <style>
       :root {
         --md-sys-color-primary: #e7e9ea;
@@ -38,11 +38,10 @@
 
       body {
         font-family: 'Manrope', system-ui, sans-serif;
-        min-width: 300px;
-        max-width: 320px;
         color: #e7e9ea;
         background: #0a0a0c;
         padding: 20px;
+        min-height: 100vh;
         animation: fadeIn 280ms ease-out both;
       }
 
@@ -99,6 +98,8 @@
         margin-left: 1px;
         opacity: 0.5;
       }
+
+      /* ── Controls ── */
 
       .field {
         margin-bottom: 14px;
@@ -212,19 +213,117 @@
         --md-outlined-button-hover-outline-color: #5a2020;
       }
 
-      #status {
-        margin-top: 14px;
-        font-size: 12px;
-        line-height: 1.5;
-        color: #71767b;
-        min-height: 1.5em;
-        transition: opacity 200ms ease;
+      /* ── Timer / Progress panel ── */
+
+      .timer-panel {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #1e1e20;
         animation: stagger 250ms ease-out 200ms both;
       }
 
-      #status strong {
+      .timer-panel.hidden {
+        display: none;
+      }
+
+      .timer-row {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .timer-elapsed {
+        font-size: 32px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        color: #e7e9ea;
+      }
+
+      .timer-label {
+        font-size: 12px;
+        color: #71767b;
+        font-weight: 400;
+      }
+
+      .progress-track {
+        width: 100%;
+        height: 6px;
+        background: #1e1e20;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: #e7e9ea;
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.4s ease-out;
+      }
+
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: #8b9198;
+        margin-bottom: 6px;
+      }
+
+      .progress-label .count {
+        font-weight: 600;
+        color: #e7e9ea;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ── Status ── */
+
+      .status-section {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid #1e1e20;
+        animation: stagger 250ms ease-out 240ms both;
+      }
+
+      .status-text {
+        font-size: 12px;
+        line-height: 1.6;
+        color: #71767b;
+        min-height: 1.6em;
+        transition: opacity 200ms ease;
+      }
+
+      .status-text strong {
         color: #e7e9ea;
         font-weight: 500;
+      }
+
+      /* ── Idle state ── */
+
+      .idle-state {
+        text-align: center;
+        padding: 32px 16px;
+        animation: stagger 250ms ease-out 200ms both;
+      }
+
+      .idle-state.hidden {
+        display: none;
+      }
+
+      .idle-icon {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 14px;
+        opacity: 0.2;
+      }
+
+      .idle-text {
+        font-size: 13px;
+        color: #71767b;
+        line-height: 1.5;
       }
 
       .quilt-advanced-hidden {
@@ -283,9 +382,34 @@
       </div>
     </div>
 
-    <div id="status"></div>
+    <!-- Timer / Progress — visible when a task is active -->
+    <div id="timerPanel" class="timer-panel hidden">
+      <div class="timer-row">
+        <span id="elapsed" class="timer-elapsed">00:00</span>
+        <span class="timer-label">elapsed</span>
+      </div>
+      <div class="progress-label">
+        <span id="progressVerb">Following</span>
+        <span id="progressCount" class="count">0 / 0</span>
+      </div>
+      <div class="progress-track">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Idle state — visible when no task is running -->
+    <div id="idleState" class="idle-state">
+      <svg class="idle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+      </svg>
+      <div class="idle-text">Ready to start a task</div>
+    </div>
+
+    <div class="status-section">
+      <div id="status" class="status-text"></div>
+    </div>
 
     <script src="../messaging/messaging.js"></script>
-    <script src="popup.js"></script>
+    <script src="sidepanel.js"></script>
   </body>
 </html>

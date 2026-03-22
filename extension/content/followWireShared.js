@@ -58,9 +58,11 @@
       FOLLOW_CLICK: "quiltFollowClickCommand",
       FRIENDSHIP_REQUEST: "quiltFriendshipRequestCommand",
       LIKE_REQUEST: "quiltLikeRequestCommand",
+      UNLIKE_REQUEST: "quiltUnlikeRequestCommand",
     };
 
     var FAVORITE_QUERY_ID = "lI07N6Otwv1PhnEgXILM7A";
+    var UNFAVORITE_QUERY_ID = "ZYKSe-w7KEslx3JhSIk5LA";
 
     function classifyFriendshipRequestKind(rawUrl, baseHref) {
       var u = absUrl(rawUrl, baseHref).toLowerCase();
@@ -309,10 +311,29 @@
       return m ? m[1] : null;
     }
 
+    function buildUnlikeRequestUrl(queryId) {
+      var qid = queryId || UNFAVORITE_QUERY_ID;
+      return "https://x.com/i/api/graphql/" + qid + "/UnfavoriteTweet";
+    }
+
+    function buildUnlikeRequestBody(tweetId, queryId) {
+      var qid = queryId || UNFAVORITE_QUERY_ID;
+      return JSON.stringify({
+        variables: { tweet_id: String(tweetId) },
+        queryId: qid,
+      });
+    }
+
+    function extractUnfavoriteQueryId(rawUrl) {
+      var m = String(rawUrl || "").match(/\/graphql\/([A-Za-z0-9_-]+)\/UnfavoriteTweet/);
+      return m ? m[1] : null;
+    }
+
     return {
       absUrl: absUrl,
       BRIDGE_MESSAGES: BRIDGE_MESSAGES,
       FAVORITE_QUERY_ID: FAVORITE_QUERY_ID,
+      UNFAVORITE_QUERY_ID: UNFAVORITE_QUERY_ID,
       buildFollowClickMarker: buildFollowClickMarker,
       buildFriendshipHeadersFromSnapshot: buildFriendshipHeadersFromSnapshot,
       buildFriendshipRequestBody: buildFriendshipRequestBody,
@@ -321,6 +342,9 @@
       buildLikeHeadersFromSnapshot: buildLikeHeadersFromSnapshot,
       likeResponseOk: likeResponseOk,
       extractFavoriteQueryId: extractFavoriteQueryId,
+      buildUnlikeRequestUrl: buildUnlikeRequestUrl,
+      buildUnlikeRequestBody: buildUnlikeRequestBody,
+      extractUnfavoriteQueryId: extractUnfavoriteQueryId,
       classifyFriendshipRequestKind: classifyFriendshipRequestKind,
       classifyFollowRequestUrl: classifyFollowRequestUrl,
       classifyUnfollowRequestUrl: classifyUnfollowRequestUrl,

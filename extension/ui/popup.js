@@ -5,46 +5,64 @@
   var T = Quilt.MESSAGE_TYPES;
   var DEBUG_KEY = "quilt_debug_enabled";
 
+  function $(id) { return document.getElementById(id); }
+
   var el = {
-    taskType: document.getElementById("taskType"),
-    maxPostAmount: document.getElementById("maxPostAmount"),
-    delayMin: document.getElementById("delayMin"),
-    delayMax: document.getElementById("delayMax"),
-    longPauseEvery: document.getElementById("longPauseEvery"),
-    longPauseMin: document.getElementById("longPauseMin"),
-    longPauseMax: document.getElementById("longPauseMax"),
-    debug: document.getElementById("debug"),
-    status: document.getElementById("status"),
-    btnStart: document.getElementById("btnStart"),
-    btnStop: document.getElementById("btnStop"),
-    btnPause: document.getElementById("btnPause"),
-    btnResume: document.getElementById("btnResume"),
+    taskType: $("taskType"),
+    maxPostAmount: $("maxPostAmount"),
+    delayMin: $("delayMin"),
+    delayMax: $("delayMax"),
+    longPauseEvery: $("longPauseEvery"),
+    longPauseMin: $("longPauseMin"),
+    longPauseMax: $("longPauseMax"),
+    status: $("status"),
+    btnStart: $("btnStart"),
+    btnStop: $("btnStop"),
   };
 
+  function getVal(mdEl) {
+    if (!mdEl) return "";
+    return mdEl.value != null ? String(mdEl.value) : "";
+  }
+
+  function getInt(mdEl) {
+    return parseInt(getVal(mdEl), 10);
+  }
+
+  var _debugOn = false;
+
+  function isDebugOn() {
+    return _debugOn;
+  }
+
   function setStatus(text, detail) {
-    el.status.innerHTML =
-      "<strong>" + (text || "") + "</strong>" + (detail ? "<br />" + detail : "");
+    if (!isDebugOn()) {
+      el.status.style.opacity = "0";
+      el.status.innerHTML = "";
+      return;
+    }
+    el.status.style.opacity = "0";
+    setTimeout(function () {
+      el.status.innerHTML =
+        "<strong>" + (text || "") + "</strong>" + (detail ? "<br />" + detail : "");
+      el.status.style.opacity = "1";
+    }, 100);
   }
 
   function readPayload() {
-    var every = parseInt(el.longPauseEvery.value, 10);
+    var every = getInt(el.longPauseEvery);
     if (!Number.isFinite(every) || every < 0) every = 0;
-    var mode = (el.taskType && el.taskType.value
-      ? String(el.taskType.value)
-      : "follow"
-    )
-      .trim()
-      .toLowerCase();
-    if (mode !== "like" && mode !== "follow" && mode !== "unfollow") mode = "follow";
+    var mode = getVal(el.taskType).trim().toLowerCase() || "follow";
+    if (mode !== "like" && mode !== "unlike" && mode !== "follow" && mode !== "unfollow") mode = "follow";
     return {
       taskType: mode,
       task: mode,
-      maxPostAmount: parseInt(el.maxPostAmount.value, 10),
-      delayMinMs: parseInt(el.delayMin.value, 10),
-      delayMaxMs: parseInt(el.delayMax.value, 10),
+      maxPostAmount: getInt(el.maxPostAmount),
+      delayMinMs: getInt(el.delayMin),
+      delayMaxMs: getInt(el.delayMax),
       longPauseEvery: every,
-      longPauseMinMs: parseInt(el.longPauseMin.value, 10),
-      longPauseMaxMs: parseInt(el.longPauseMax.value, 10),
+      longPauseMinMs: getInt(el.longPauseMin),
+      longPauseMaxMs: getInt(el.longPauseMax),
     };
   }
 
@@ -65,17 +83,26 @@
   }
 
   chrome.storage.local.get([DEBUG_KEY], function (r) {
-    el.debug.checked = !!r[DEBUG_KEY];
+    _debugOn = !!r[DEBUG_KEY];
   });
 
-  el.debug.addEventListener("change", function () {
-    chrome.storage.local.set({ [DEBUG_KEY]: el.debug.checked });
+  chrome.storage.onChanged.addListener(function (changes, area) {
+    if (area !== "local" || !changes[DEBUG_KEY]) return;
+    _debugOn = !!changes[DEBUG_KEY].newValue;
+    if (!_debugOn) {
+      el.status.style.opacity = "0";
+      el.status.innerHTML = "";
+    } else {
+      chrome.storage.local.get(["quilt_last_status"], function (r) {
+        applyStoredStatus(r.quilt_last_status);
+      });
+    }
   });
 
   el.btnStart.addEventListener("click", function () {
     var p = readPayload();
     if (!Quilt.isTaskStartPayload(p)) {
-      setStatus("Invalid settings", "Check delays and max post amount.");
+      setStatus("Invalid settings", "Check delays and max actions.");
       return;
     }
     setStatus("Starting\u2026", "");
@@ -87,9 +114,11 @@
       var label =
         p.taskType === "like"
           ? "Like"
-          : p.taskType === "unfollow"
-            ? "Unfollow"
-            : "Follow";
+          : p.taskType === "unlike"
+            ? "Unlike"
+            : p.taskType === "unfollow"
+              ? "Unfollow"
+              : "Follow";
       setStatus("Started: " + label, "Active on this x.com tab.");
     });
   });
@@ -100,30 +129,18 @@
     });
   });
 
-  el.btnPause.addEventListener("click", function () {
-    send(T.TASK_PAUSE, {}).then(function (r) {
-      setStatus(r.ok ? "Pause sent" : "Pause failed", r.error || "");
-    });
-  });
-
-  el.btnResume.addEventListener("click", function () {
-    send(T.TASK_RESUME, {}).then(function (r) {
-      setStatus(r.ok ? "Resume sent" : "Resume failed", r.error || "");
-    });
-  });
-
   function applyStoredStatus(data) {
     if (!data) return;
     var msg = data.message || "";
-    setStatus(data.state || "—", msg);
+    setStatus(data.state || "\u2014", msg);
   }
 
-  chrome.storage.local.get(["quilt_last_status"], function (r) {
-    applyStoredStatus(r.quilt_last_status);
+  chrome.storage.local.get([DEBUG_KEY, "quilt_last_status"], function (r) {
+    if (r[DEBUG_KEY]) applyStoredStatus(r.quilt_last_status);
   });
 
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== "local" || !changes.quilt_last_status) return;
-    applyStoredStatus(changes.quilt_last_status.newValue);
+    if (isDebugOn()) applyStoredStatus(changes.quilt_last_status.newValue);
   });
 })();

@@ -1,2 +1,10 @@
 .worktrees/
 .cursor/
+docs/
+*.plan.md
+AGENTS.md
+node_modules/
+extension/ui/popup-bundle.js
+extension/ui/popup-bundle.css
+extension/ui/sidepanel-bundle.js
+extension/ui/sidepanel-bundle.css

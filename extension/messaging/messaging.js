@@ -23,7 +23,7 @@
     if (a && b && a !== b) return null;
     var v = a || b;
     if (!v) return "follow";
-    if (v === "like" || v === "follow" || v === "unfollow") return v;
+    if (v === "like" || v === "unlike" || v === "follow" || v === "unfollow") return v;
     return null;
   }
 

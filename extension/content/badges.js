@@ -2,6 +2,9 @@
   "use strict";
 
   var Quilt = (window.Quilt = window.Quilt || {});
+  if (Quilt._badgesInstalled) return;
+  Quilt._badgesInstalled = true;
+
   var T = Quilt.MESSAGE_TYPES;
 
   var BADGE_DEFAULTS = {
@@ -168,14 +171,17 @@
 
       var progress =
         data.message &&
-        data.message.match(/^(Follow|Like|Unfollow)\s+(\d+)\s*\/\s*(\d+)/i);
+        data.message.match(/^(Follow|Like|Unlike|Unfollow)\s+(\d+)\s*\/\s*(\d+)/i);
       if (progress) {
+        var pLower = progress[1].toLowerCase();
         var verb =
-          progress[1].toLowerCase() === "follow"
+          pLower === "follow"
             ? "Following"
-            : progress[1].toLowerCase() === "like"
-              ? "Liking"
-              : "Unfollowing";
+            : pLower === "unlike"
+              ? "Unliking"
+              : pLower === "like"
+                ? "Liking"
+                : "Unfollowing";
         return verb + " " + progress[2] + " / " + progress[3];
       }
 
@@ -203,9 +209,10 @@
       state === "error"
     )
       return null;
-    if (raw.indexOf("follow") !== -1 && raw.indexOf("unfollow") === -1)
-      return "follow";
     if (raw.indexOf("unfollow") !== -1) return "unfollow";
+    if (raw.indexOf("follow") !== -1) return "follow";
+    if (raw.indexOf("unlike") !== -1 || raw.indexOf("unliking") !== -1)
+      return "unlike";
     if (raw.indexOf("like") !== -1 || raw.indexOf("liking") !== -1)
       return "like";
     return _activeTask;
@@ -301,13 +308,6 @@
     chrome.storage.local.get(["quilt_last_status"], function (r) {
       var stored = r.quilt_last_status;
       if (!stored) return;
-      var s = stored.state || "";
-      if (s === "running" || s === "paused") {
-        chrome.storage.local.set({
-          quilt_last_status: { state: "stopped", message: "Page reloaded", time: Date.now() },
-        });
-        return;
-      }
       applyStatus(stored);
     });
 

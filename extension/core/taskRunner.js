@@ -5,8 +5,13 @@
 
   var T = Quilt.MESSAGE_TYPES;
 
+  var _taskMeta = { taskType: null, startedAt: 0, maxActions: 0 };
+
   function emitStatus(state, message, extra) {
     var payload = { state: state, message: message || "" };
+    if (_taskMeta.taskType) payload.taskType = _taskMeta.taskType;
+    if (_taskMeta.startedAt) payload.startedAt = _taskMeta.startedAt;
+    if (_taskMeta.maxActions) payload.maxActions = _taskMeta.maxActions;
     if (extra) {
       for (var k in extra) {
         if (Object.prototype.hasOwnProperty.call(extra, k)) {
@@ -110,6 +115,10 @@
     var longMin = norm.longPauseMinMs;
     var longMax = norm.longPauseMaxMs;
 
+    _taskMeta.taskType = (norm.taskType || spec.actionLabel || "").toLowerCase();
+    _taskMeta.startedAt = Date.now();
+    _taskMeta.maxActions = maxActions;
+
     var actionDelay = spec.flatDelay
       ? function (lo, hi) {
           return Quilt.delayApi.sleep(Quilt.delayApi.randomInt(lo, hi));
@@ -134,6 +143,7 @@
 
     emitStatus("running", spec.actionLabel + " task started", {
       maxActions: maxActions,
+      completed: 0,
     });
 
     try {
@@ -374,10 +384,53 @@
         session.onSuccessfulAction();
         done += 1;
 
-        if (spec.flatDelay && btn && btn.cell) {
+        if (spec.flatDelay) {
           try {
-            btn.cell.style.transition = "opacity 0.4s";
-            btn.cell.style.opacity = "0.35";
+            var fadeEl = null;
+            if (typeof spec.getFadeTarget === "function") {
+              fadeEl = spec.getFadeTarget(btn);
+            } else if (btn && btn.cell) {
+              fadeEl = btn.cell;
+            }
+            if (fadeEl) {
+              fadeEl.style.setProperty("will-change", "opacity, max-height, margin, padding", "important");
+              fadeEl.style.setProperty("transform", "translateZ(0)", "important");
+              fadeEl.style.setProperty("pointer-events", "none", "important");
+              fadeEl.style.setProperty("transition", "opacity 0.35s ease-out", "important");
+              fadeEl.style.setProperty("opacity", "0", "important");
+              if (spec.removeAfterFade) {
+                (function (el) {
+                  setTimeout(function () {
+                    try {
+                      var h = el.offsetHeight;
+                      var rect = el.getBoundingClientRect();
+                      var scroller = Quilt.domActionsApi.getFeedScrollElement
+                        ? Quilt.domActionsApi.getFeedScrollElement()
+                        : null;
+                      el.style.setProperty("max-height", h + "px", "important");
+                      el.style.setProperty("overflow", "hidden", "important");
+                      void el.offsetHeight;
+                      el.style.setProperty(
+                        "transition",
+                        "max-height 0.4s ease-in-out, margin 0.3s ease-in-out, padding 0.3s ease-in-out",
+                        "important"
+                      );
+                      el.style.setProperty("max-height", "0px", "important");
+                      el.style.setProperty("margin", "0", "important");
+                      el.style.setProperty("padding", "0", "important");
+                    } catch (e2) { /* ignore */ }
+                    setTimeout(function () {
+                      try {
+                        if (scroller && rect.top < window.innerHeight) {
+                          scroller.scrollTop = Math.max(0, scroller.scrollTop - h);
+                        }
+                        el.remove();
+                      } catch (e3) { /* ignore */ }
+                    }, 450);
+                  }, 380);
+                })(fadeEl);
+              }
+            }
           } catch (e) { /* ignore */ }
         }
 
@@ -416,7 +469,7 @@
       }
 
       if (this._cancelled) {
-        emitStatus("cancelled", "Task cancelled");
+        emitStatus("cancelled", "Task cancelled", { completed: done });
       } else if (done >= maxActions) {
         emitStatus("completed", "Reached max post amount", { completed: done });
       }
@@ -427,6 +480,9 @@
         this._running = false;
         this._limiter = null;
       }
+      _taskMeta.taskType = null;
+      _taskMeta.startedAt = 0;
+      _taskMeta.maxActions = 0;
     }
   };
 
@@ -486,6 +542,9 @@
       flatDelay: true,
       maxEmptyIterations: 60,
       postSuccessScroll: false,
+      getFadeTarget: function (btn) {
+        return Quilt.domActionsApi.getTweetArticle(btn);
+      },
       getButtons: function (set) {
         return Quilt.domActionsApi.getLikeButtons(set);
       },
@@ -498,21 +557,22 @@
       saveProcessed: function (set) {
         return Quilt.storageApi.saveLikedTweetIdSet(set);
       },
-      _likeApiFails: 0,
-      performClick: function (btn) {
-        var tid = Quilt.domActionsApi.getTweetIdFromLikeButton(btn);
-        if (!tid) return { ok: false, mode: "request", error: "no_tweet_id" };
-        var self = this;
-        return Quilt.domActionsApi.performDirectLikeRequest(tid).then(function (r) {
-          if (r.ok) {
-            self._likeApiFails = 0;
-          } else {
-            self._likeApiFails = (self._likeApiFails || 0) + 1;
-            Quilt.debugApi.log("like API fail #" + self._likeApiFails, r.error, r.status);
-          }
-          return r;
-        });
-      },
+      performClick: (function () {
+        var apiFails = 0;
+        return function (btn) {
+          var tid = Quilt.domActionsApi.getTweetIdFromLikeButton(btn);
+          if (!tid) return { ok: false, mode: "request", error: "no_tweet_id" };
+          return Quilt.domActionsApi.performDirectLikeRequest(tid).then(function (r) {
+            if (r.ok) {
+              apiFails = 0;
+            } else {
+              apiFails += 1;
+              Quilt.debugApi.log("like API fail #" + apiFails, r.error, r.status);
+            }
+            return r;
+          });
+        };
+      })(),
       verifyAfterClick: function () {
         return Promise.resolve(true);
       },
@@ -561,6 +621,70 @@
           "unfollow"
         );
       },
+      verifyAfterClick: function () {
+        return Promise.resolve(true);
+      },
+    });
+  };
+
+  TaskRunner.prototype.startUnlikeTask = async function (rawOpts) {
+    if (this._running) {
+      this.cancel();
+    }
+    this._running = true;
+    this._cancelled = false;
+    this._paused = false;
+
+    var norm = Quilt.normalizeTaskStartPayload(rawOpts);
+    var self = this;
+    await Quilt.delayApi.sleep(500);
+    if (self._cancelled) return;
+    await self._runActionTask(norm, {
+      actionLabel: "Unlike",
+      flatDelay: true,
+      removeAfterFade: true,
+      maxEmptyIterations: 60,
+      postSuccessScroll: false,
+      getFadeTarget: function (btn) {
+        return Quilt.domActionsApi.getTweetArticle(btn);
+      },
+      getButtons: function (set) {
+        return Quilt.domActionsApi.getUnlikeButtons(set);
+      },
+      getTargetId: function (el) {
+        return Quilt.domActionsApi.getTweetIdFromLikeButton(el);
+      },
+      loadProcessed: function () {
+        return Promise.resolve(new Set());
+      },
+      saveProcessed: function () {
+        return Promise.resolve();
+      },
+      updateProcessed: function (set, id) {
+        if (id) set.add(id);
+        Quilt.storageApi.getLikedTweetIdSet().then(function (likedSet) {
+          if (likedSet.has(id)) {
+            likedSet.delete(id);
+            Quilt.storageApi.saveLikedTweetIdSet(likedSet);
+          }
+        });
+      },
+      performClick: (function () {
+        var apiFails = 0;
+        return function (btn) {
+          var tid = Quilt.domActionsApi.getTweetIdFromLikeButton(btn);
+          if (!tid) return { ok: false, mode: "request", error: "no_tweet_id" };
+          return Quilt.domActionsApi.performDirectUnlikeRequest(tid).then(function (r) {
+            if (r.ok) {
+              apiFails = 0;
+            } else {
+              apiFails += 1;
+              Quilt.debugApi.log("unlike API fail #" + apiFails, r.error, r.status);
+            }
+            return r;
+          });
+        };
+      })(),
       verifyAfterClick: function () {
         return Promise.resolve(true);
       },

@@ -19,6 +19,7 @@
     "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
   var observedApiHeaders = {};
   var capturedFavoriteQueryId = null;
+  var capturedUnfavoriteQueryId = null;
   var _nativeFetch =
     window.__quiltNativeFetch ||
     (window.fetch && !window.fetch.__quiltFollowFetchPatched
@@ -304,6 +305,75 @@
     }
   }
 
+  function postUnlikeRequestAck(requestId, payload) {
+    try {
+      window.postMessage(
+        {
+          quiltUnlikeRequest: 1,
+          requestId: requestId,
+          ok: !!(payload && payload.ok),
+          status: payload && payload.status,
+          response: payload && payload.response,
+          action: "unlike",
+          url: payload && payload.url,
+          error: payload && payload.error,
+        },
+        window.location.origin || "*"
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  async function executeUnlikeRequest(tweetId) {
+    var qid = capturedUnfavoriteQueryId || shared.UNFAVORITE_QUERY_ID;
+    var url = shared.buildUnlikeRequestUrl(qid);
+    var body = shared.buildUnlikeRequestBody(tweetId, qid);
+    var fetchFn = _nativeFetch || window.fetch;
+    var response;
+    var text = "";
+    try {
+      response = await fetchFn(url, {
+        headers: buildLikeHeaders(),
+        referrer: location.href,
+        method: "POST",
+        mode: "cors",
+        credentials: "include",
+        body: body,
+      });
+      try {
+        text = await response.text();
+      } catch (e) {
+        text = "";
+      }
+      var isOk = response.status >= 200 && response.status < 300;
+      if (isOk && text) {
+        try {
+          var parsed = JSON.parse(text);
+          if (parsed && Array.isArray(parsed.errors) && parsed.errors.length) {
+            isOk = false;
+          }
+        } catch (e2) { /* ignore parse failure on 2xx */ }
+      }
+      return {
+        ok: isOk,
+        status: response.status,
+        response: text,
+        action: "unlike",
+        url: url,
+      };
+    } catch (e3) {
+      return {
+        ok: false,
+        status: 0,
+        response: "",
+        action: "unlike",
+        url: url,
+        error: String(e3 && e3.message ? e3.message : e3),
+      };
+    }
+  }
+
   function pointerClickInit(clientX, clientY) {
     var o = {
       bubbles: true,
@@ -505,6 +575,8 @@
         rememberApiHeaders(getFetchHeadersSnapshot(input, init));
         var fqid = shared.extractFavoriteQueryId(rawUrl);
         if (fqid) capturedFavoriteQueryId = fqid;
+        var ufqid = shared.extractUnfavoriteQueryId(rawUrl);
+        if (ufqid) capturedUnfavoriteQueryId = ufqid;
       }
       var kind = shared.classifyFriendshipRequestKind(rawUrl, location.href);
       if (!kind) {
@@ -581,6 +653,13 @@
       if (!d.requestId || !d.tweetId) return;
       executeLikeRequest(d.tweetId).then(function (result) {
         postLikeRequestAck(d.requestId, result);
+      });
+      return;
+    }
+    if (d[BRIDGE.UNLIKE_REQUEST] === 1) {
+      if (!d.requestId || !d.tweetId) return;
+      executeUnlikeRequest(d.tweetId).then(function (result) {
+        postUnlikeRequestAck(d.requestId, result);
       });
     }
   }

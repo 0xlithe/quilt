@@ -567,6 +567,24 @@
     return out;
   }
 
+  function getUnlikeButtons(processedSet) {
+    var set = processedSet instanceof Set ? processedSet : new Set();
+    var nodes = toArray(document.querySelectorAll('[data-testid="unlike"]'));
+    var out = [];
+    Quilt.debugApi.log("getUnlikeButtons: raw count", nodes.length);
+    for (var j = 0; j < nodes.length; j++) {
+      var el = nodes[j];
+      if (!isVisible(el)) continue;
+      var tid = getTweetIdFromLikeButton(el);
+      if (!tid) continue;
+      if (set.has(tid)) continue;
+      if (!getTweetArticle(el)) continue;
+      out.push(el);
+    }
+    Quilt.debugApi.log("getUnlikeButtons: candidates", out.length);
+    return out;
+  }
+
   function detectRateLimitUi() {
     var dialogs = toArray(
       document.querySelectorAll(
@@ -944,6 +962,111 @@
     }
     if (result.status >= 200 && result.status < 300) {
       Quilt.debugApi.log("performDirectLikeRequest: 2xx but ok=false, trusting status");
+      return {
+        ok: true,
+        mode: "request",
+        requestOk: true,
+        requestStatus: result.status,
+      };
+    }
+    return {
+      ok: false,
+      mode: "request",
+      error: result.error || "request_failed",
+      status: result.status || 0,
+    };
+  }
+
+  function requestMainWorldUnlike(tweetId, timeoutMs) {
+    return new Promise(function (resolve) {
+      var requestId =
+        "quilt-unlike-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+      var settled = false;
+      var limit =
+        typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 6000;
+
+      function finish(result) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(tm);
+        window.removeEventListener("message", onMessage);
+        resolve(
+          result || {
+            ok: false,
+            status: 0,
+            action: "unlike",
+            error: "request_timeout",
+          }
+        );
+      }
+
+      function onMessage(ev) {
+        if (ev.source !== window) return;
+        var d = ev.data;
+        if (!d || typeof d !== "object") return;
+        if (d.quiltUnlikeRequest !== 1) return;
+        if (d.requestId !== requestId) return;
+        finish(d);
+      }
+
+      window.addEventListener("message", onMessage);
+      var tm = setTimeout(function () {
+        finish(null);
+      }, limit);
+
+      try {
+        window.postMessage(
+          _followWireShared.makeBridgePayload(_bridgeMessages.UNLIKE_REQUEST, {
+            requestId: requestId,
+            tweetId: String(tweetId),
+          }),
+          window.location.origin || "*"
+        );
+      } catch (e) {
+        finish({
+          ok: false,
+          status: 0,
+          action: "unlike",
+          error: String(e && e.message ? e.message : e),
+        });
+      }
+    });
+  }
+
+  async function performDirectUnlikeRequest(tweetId) {
+    if (!tweetId || !_followWireShared) {
+      Quilt.debugApi.log("performDirectUnlikeRequest: missing deps", tweetId, !!_followWireShared);
+      return { ok: false, mode: "request", error: "no_tweet_id_or_wire" };
+    }
+    var result;
+    try {
+      result = await requestMainWorldUnlike(tweetId, 8000);
+    } catch (e) {
+      Quilt.debugApi.log("performDirectUnlikeRequest: bridge threw", e);
+      return { ok: false, mode: "request", error: "bridge_error", status: 0 };
+    }
+    if (!result) {
+      Quilt.debugApi.log("performDirectUnlikeRequest: bridge timeout for", tweetId);
+      return { ok: false, mode: "request", error: "bridge_timeout", status: 0 };
+    }
+    Quilt.debugApi.log(
+      "performDirectUnlikeRequest", tweetId,
+      "ok:", result.ok, "status:", result.status,
+      "err:", result.error || "(none)"
+    );
+    if (result.status === 429) {
+      return { ok: false, mode: "request", error: "rate_limited", status: 429 };
+    }
+    if (result.ok && result.status >= 200 && result.status < 300) {
+      return {
+        ok: true,
+        mode: "request",
+        requestOk: true,
+        requestStatus: result.status,
+      };
+    }
+    if (result.status >= 200 && result.status < 300) {
+      Quilt.debugApi.log("performDirectUnlikeRequest: 2xx but ok=false, trusting status");
       return {
         ok: true,
         mode: "request",
@@ -1483,6 +1606,7 @@
     if (typeof listener === "function") _feedListeners.push(listener);
 
     if (_feedObserver) return;
+    if (_feedListeners.length === 0) return;
 
     var scheduled = false;
     _feedObserver = new MutationObserver(function () {
@@ -1525,6 +1649,7 @@
     getUserCellTargets: getUserCellTargets,
     getUserCellUnfollowTargets: getUserCellUnfollowTargets,
     getLikeButtons: getLikeButtons,
+    getUnlikeButtons: getUnlikeButtons,
     getFollowTargetId: getFollowTargetId,
     getTweetArticle: getTweetArticle,
     getTweetIdFromLikeButton: getTweetIdFromLikeButton,
@@ -1541,6 +1666,9 @@
     performDirectFriendshipRequest: performDirectFriendshipRequest,
     requestMainWorldLike: requestMainWorldLike,
     performDirectLikeRequest: performDirectLikeRequest,
+    requestMainWorldUnlike: requestMainWorldUnlike,
+    performDirectUnlikeRequest: performDirectUnlikeRequest,
+    getFeedScrollElement: getFeedScrollElement,
     scrollFeed: scrollFeed,
     scrollFeedHuman: scrollFeedHuman,
     waitForNewContent: waitForNewContent,
