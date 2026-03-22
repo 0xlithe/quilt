@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08080a" />
+    <title>Quilt</title>
+    <link rel="icon" type="image/png" href="../assets/favicon.png" />
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 12px;
+        min-width: 280px;
+        color: #e7e9ea;
+        background: linear-gradient(180deg, #08080a 0%, #050507 100%);
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      label {
+        display: block;
+        font-size: 11px;
+        margin-top: 8px;
+        color: #71767b;
+      }
+      input,
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #2f3336;
+        background: #16181c;
+        color: #e7e9ea;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      button {
+        flex: 1;
+        padding: 8px 10px;
+        border-radius: 9999px;
+        border: none;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #1d9bf0;
+        color: #fff;
+      }
+      button.danger {
+        background: #202327;
+        color: #f4212e;
+        border: 1px solid #2f3336;
+      }
+      button.secondary {
+        background: #202327;
+        color: #e7e9ea;
+        border: 1px solid #2f3336;
+      }
+      #status {
+        margin-top: 12px;
+        font-size: 11px;
+        line-height: 1.4;
+        color: #71767b;
+        min-height: 2.8em;
+      }
+      #status strong {
+        color: #e7e9ea;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .check input {
+        width: auto;
+        margin: 0;
+      }
+      .check label {
+        margin: 0;
+        color: #e7e9ea;
+      }
+      .quilt-advanced-hidden {
+        display: none !important;
+      }
+      .field-hint {
+        font-size: 10px;
+        line-height: 1.35;
+        color: #71767b;
+        margin: 4px 0 0;
+        max-width: 280px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: block;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+      }
+      .brand-copy {
+        flex: 1;
+      }
+      .brand-kicker {
+        margin: 2px 0 0;
+        font-size: 11px;
+        color: #8b9198;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <img class="brand-mark" src="../assets/icon-48.png" alt="Quilt icon" />
+      <div class="brand-copy">
+        <h1>Quilt <span style="opacity:0.4;font-size:0.55em;margin:0 3px;vertical-align:1px">•</span><span style="font-size:0.55em;font-weight:400;opacity:0.7">for</span> <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:0px;margin-left:1px;opacity:0.7"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></h1>
+      </div>
+    </div>
+
+    <label for="taskType">Task mode</label>
+    <select id="taskType" name="quiltTaskMode" aria-label="Task mode: Follow, Unfollow, or Like" autocomplete="off">
+      <option value="follow" selected>Follow</option>
+      <option value="unfollow">Unfollow</option>
+      <option value="like">Like</option>
+    </select>
+
+    <label for="maxPostAmount">Max post amount</label>
+    <input id="maxPostAmount" type="number" min="1" value="50" />
+
+    <label for="delayMin">Delay min (ms)</label>
+    <input id="delayMin" type="number" min="0" value="4000" />
+
+    <label for="delayMax">Delay max (ms)</label>
+    <input id="delayMax" type="number" min="0" value="8000" />
+
+    <div class="quilt-advanced-hidden" aria-hidden="true">
+      <label for="longPauseEvery">Long pause every N actions (0 = off)</label>
+      <input id="longPauseEvery" type="number" min="0" value="0" />
+
+      <label for="longPauseMin">Long pause min (ms)</label>
+      <input id="longPauseMin" type="number" min="0" value="15000" />
+
+      <label for="longPauseMax">Long pause max (ms)</label>
+      <input id="longPauseMax" type="number" min="0" value="45000" />
+    </div>
+
+    <div class="check">
+      <input type="checkbox" id="debug" />
+      <label for="debug">Debug logging (console)</label>
+    </div>
+
+    <div class="row">
+      <button type="button" class="primary" id="btnStart">Start</button>
+      <button type="button" class="danger" id="btnStop">Stop</button>
+    </div>
+    <div class="row">
+      <button type="button" class="secondary" id="btnPause">Pause</button>
+      <button type="button" class="secondary" id="btnResume">Resume</button>
+    </div>
+    <div id="status"></div>
+    <script src="../messaging/messaging.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

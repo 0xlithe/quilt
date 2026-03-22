@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Quilt",
+  "short_name": "Quilt",
+  "version": "0.3.0",
+  "description": "A focused automation workspace for X with human-tuned timing, task controls, and session safety.",
+  "permissions": ["storage", "activeTab", "tabs", "scripting"],
+  "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "action": {
+    "default_title": "Quilt Control Panel",
+    "default_popup": "ui/popup.html",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png",
+      "48": "assets/icon-48.png",
+      "128": "assets/icon-128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": [
+        "messaging/messaging.js",
+        "storage/storage.js",
+        "content/debug.js",
+        "safety/delay.js",
+        "safety/humanizer.js",
+        "safety/sessionManager.js",
+        "safety/cooldown.js",
+        "safety/rateLimiter.js",
+        "core/scheduler.js",
+        "core/taskStatusShared.js",
+        "content/followWireShared.js",
+        "content/domActions.js",
+        "core/taskRunner.js",
+        "content/badges.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
