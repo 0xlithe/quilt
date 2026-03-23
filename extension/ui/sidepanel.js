@@ -96,13 +96,7 @@
 
   function updateTierBadge(tier) {
     if (!tierBadge) return;
-    if (tier === "premium") {
-      tierBadge.textContent = "PRO";
-      tierBadge.className = "tier-badge pro";
-    } else {
-      tierBadge.textContent = "FREE";
-      tierBadge.className = "tier-badge free";
-    }
+    tierBadge.style.display = tier === "premium" ? "inline-flex" : "none";
   }
 
   function updateTierHint() {
@@ -140,6 +134,15 @@
 
   if (el.taskType) el.taskType.addEventListener("change", updateTierHint);
   if (el.maxPostAmount) el.maxPostAmount.addEventListener("input", updateTierHint);
+
+  var delayWarning = document.getElementById("delayWarning");
+  function updateDelayWarning() {
+    if (!delayWarning || !el.delayMin) return;
+    var val = getInt(el.delayMin);
+    delayWarning.style.display = (val > 0 && val < 4000) ? "block" : "none";
+  }
+  if (el.delayMin) el.delayMin.addEventListener("input", updateDelayWarning);
+  updateDelayWarning();
 
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== "local" || !changes[SK.LICENSE]) return;

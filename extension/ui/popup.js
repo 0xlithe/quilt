@@ -112,6 +112,14 @@
     }
   });
 
+  var delayWarning = document.getElementById("delayWarning");
+  function updateDelayWarning() {
+    if (!delayWarning || !el.delayMin) return;
+    var val = parseInt(el.delayMin.value, 10) || 0;
+    delayWarning.style.display = (val > 0 && val < 4000) ? "block" : "none";
+  }
+  if (el.delayMin) el.delayMin.addEventListener("input", updateDelayWarning);
+
   el.btnStart.addEventListener("click", function () {
     var p = readPayload();
     if (!Quilt.isTaskStartPayload(p)) {

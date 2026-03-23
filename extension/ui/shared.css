@@ -103,13 +103,22 @@ body {
 }
 
 .field-row .field {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   margin-bottom: 0;
+}
+
+.field-row .field > md-outlined-select,
+.field-row .field > md-outlined-text-field {
+  width: 100%;
+  min-width: 0;
 }
 
 md-outlined-text-field,
 md-outlined-select {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   --md-outlined-text-field-container-shape: 10px;
   --md-outlined-text-field-outline-color: #2f3336;
   --md-outlined-text-field-hover-outline-color: #4a4e54;

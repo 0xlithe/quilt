@@ -248,23 +248,25 @@
         color: #8b9198;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        margin-top: 6px;
         margin-bottom: 8px;
       }
 
       .builder-checks {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px 14px;
+        gap: 10px 18px;
         margin-bottom: 10px;
       }
 
       .builder-check-label {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 7px;
         font-size: 12px;
         color: #e7e9ea;
         cursor: pointer;
+        min-height: 24px;
       }
 
       .builder-check-label input[type="checkbox"] {
@@ -273,6 +275,7 @@
         height: 14px;
         border-radius: 3px;
         outline: none;
+        flex-shrink: 0;
       }
 
       .builder-check-label input[type="checkbox"]:focus-visible {
@@ -566,14 +569,9 @@
         line-height: 1;
       }
 
-      .tier-badge.free {
-        background: #2a2a2e;
-        color: #71767b;
-      }
-
       .tier-badge.pro {
-        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-        color: #fff;
+        background: #e7e9ea;
+        color: #0a0a0c;
       }
 
       .tier-limit-hint {
@@ -581,6 +579,14 @@
         color: #71767b;
         margin-top: 4px;
         margin-bottom: 2px;
+      }
+
+      .delay-warning {
+        font-size: 11px;
+        color: #f59e0b;
+        margin-top: 4px;
+        margin-bottom: 2px;
+        transition: opacity 0.2s ease;
       }
 
       .tier-limit-hint a {
@@ -627,7 +633,7 @@
       <img class="brand-mark" src="../assets/icon-48.png" alt="quilt icon" />
       <h1>quilt<span class="sep">&bull;</span><span class="sub">for</span>
         <svg class="x-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-        <span id="tierBadge" class="tier-badge free">FREE</span>
+        <span id="tierBadge" class="tier-badge pro" style="display:none">PRO</span>
       </h1>
     </div>
 
@@ -657,6 +663,7 @@
         <div class="field"><md-outlined-text-field id="delayMin" label="Delay min (ms)" type="number" min="0" value="4000"></md-outlined-text-field></div>
         <div class="field"><md-outlined-text-field id="delayMax" label="Delay max (ms)" type="number" min="0" value="8000"></md-outlined-text-field></div>
       </div>
+      <div id="delayWarning" class="delay-warning" style="display:none">Low delays increase suspension risk</div>
 
       <div class="quilt-advanced-hidden" aria-hidden="true">
         <md-outlined-text-field id="longPauseEvery" label="Long pause every N (0=off)" type="number" min="0" value="0"></md-outlined-text-field>
@@ -756,6 +763,7 @@
           <div class="builder-checks" style="margin-top:10px">
             <label class="builder-check-label"><input type="checkbox" id="sqBlueVerified" /> Verified only</label>
             <label class="builder-check-label"><input type="checkbox" id="sqFollows" /> From follows</label>
+            <label class="builder-check-label"><input type="checkbox" id="sqQuoteOnly" /> Quotes only</label>
           </div>
         </div>
 
@@ -766,18 +774,17 @@
             <label class="builder-check-label"><input type="checkbox" id="sqHasImages" /> Images</label>
             <label class="builder-check-label"><input type="checkbox" id="sqHasVideos" /> Videos</label>
             <label class="builder-check-label"><input type="checkbox" id="sqHasLinks" /> Links</label>
-            <label class="builder-check-label"><input type="checkbox" id="sqQuoteOnly" /> Quotes only</label>
           </div>
           <div class="field-row">
             <div class="field">
-              <md-outlined-select id="sqReplies" label="Replies" style="width:100%">
+              <md-outlined-select id="sqReplies" label="Replies">
                 <md-select-option value="" selected><div slot="headline">Any</div></md-select-option>
                 <md-select-option value="exclude"><div slot="headline">Exclude</div></md-select-option>
                 <md-select-option value="only"><div slot="headline">Only</div></md-select-option>
               </md-outlined-select>
             </div>
             <div class="field">
-              <md-outlined-select id="sqRetweets" label="Retweets" style="width:100%">
+              <md-outlined-select id="sqRetweets" label="Retweets">
                 <md-select-option value="" selected><div slot="headline">Any</div></md-select-option>
                 <md-select-option value="exclude"><div slot="headline">Exclude</div></md-select-option>
                 <md-select-option value="only"><div slot="headline">Only</div></md-select-option>
@@ -811,7 +818,7 @@
         <div class="builder-actions">
           <md-filled-button id="btnApplySearch" style="flex:1">Apply</md-filled-button>
           <md-outlined-button id="btnSaveSearch" style="flex:1">Save</md-outlined-button>
-          <md-outlined-button id="btnResetSearch">Clear</md-outlined-button>
+          <md-outlined-button id="btnResetSearch" style="--md-outlined-button-outline-color:transparent">Clear</md-outlined-button>
         </div>
 
         <!-- Save dialog (appears when Save clicked) -->
